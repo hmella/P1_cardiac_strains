@@ -39,4 +39,4 @@ if args.generate_params:
 generate_cspamm(resolutions, cfrequencies, patients, nb_data)
 
 # Generate DENSE
-generate_cspamm(resolutions, dfrequencies, patients, nb_data)
+generate_dense(resolutions, dfrequencies, patients, nb_data)
