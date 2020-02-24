@@ -1,23 +1,7 @@
-import argparse
-
 import numpy as np
 
+from utils.args_parser import *
 from utils.generation import generate_cspamm, generate_dense, generate_phantoms
-
-##################
-# ARGS PARSER
-##################
-
-# Initiate the parser
-parser = argparse.ArgumentParser()
-
-# add long and short argument
-parser.add_argument("--generate-params", "-gp", help="Choose if paramters are generated or not", type=bool)
-parser.add_argument("--nb-data", "-Nd", help="Number of data", type=int)
-parser.add_argument("--nb-samples", "-Ns", help="Number of spins samples", type=int)
-
-# read arguments from the command line
-args = parser.parse_args()
 
 ##################
 # INPUT PARAMETERS
@@ -51,8 +35,8 @@ dfrequencies = [0.12*1000*2*np.pi*np.array([1,1,0])]                      # enco
 if args.generate_params:
     generate_phantoms(nb_samples,nb_data)
 
-# # Generate CSPAMM
-# generate_cspamm(resolutions, cfrequencies, patients, nb_data)
+# Generate CSPAMM
+generate_cspamm(resolutions, cfrequencies, patients, nb_data)
 
-# # Generate DENSE
-# generate_cspamm(resolutions, dfrequencies, patients, nb_data)
+# Generate DENSE
+generate_cspamm(resolutions, dfrequencies, patients, nb_data)

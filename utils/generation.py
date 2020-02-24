@@ -77,8 +77,7 @@ def generate_cspamm(resolutions, frequencies, patients, nb_data):
                 NSA_2.scale()
 
                 # Export kspaces
-                save_pyobject(NSA_1,'inputs/kspaces/Ck0_{:03d}_{:02d}_{:02d}.pkl'.format(d,fn,rn))
-                save_pyobject(NSA_2,'inputs/kspaces/Ck1_{:03d}_{:02d}_{:02d}.pkl'.format(d,fn,rn))
+                save_pyobject([NSA_1,NSA_2],'inputs/kspaces/Ck_{:03d}_{:02d}_{:02d}.pkl'.format(d,fn,rn))
 
 
 # DENSE images generation
@@ -130,5 +129,4 @@ def generate_dense(resolutions, frequencies, patients, nb_data):
                 NSA_2.scale()
 
                 # Export kspaces
-                save_pyobject(NSA_1,'inputs/kspaces/Dk0_{:03d}_{:02d}_{:02d}.pkl'.format(d,fn,rn))
-                save_pyobject(NSA_2,'inputs/kspaces/Dk1_{:03d}_{:02d}_{:02d}.pkl'.format(d,fn,rn))
+                save_pyobject([NSA_1,NSA_2],'inputs/kspaces/Dk0_{:03d}_{:02d}_{:02d}.pkl'.format(d,fn,rn))
