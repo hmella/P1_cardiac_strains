@@ -28,7 +28,7 @@ def generate_phantoms(nb_samples,nb_data):
 
 
 # CSPAMM images generation
-def generate_cspamm(resolutions, frequencies, patients, nb_data):
+def generate_cspamm(resolutions, frequencies, patients, nb_data, noise_free=False):
 
     # Create folder
     if not os.path.isdir('inputs/kspaces'):
@@ -72,6 +72,19 @@ def generate_cspamm(resolutions, frequencies, patients, nb_data):
                 # Generate kspaces
                 NSA_1, NSA_2, REF, mask = I.generate(artifact, phantom, param, debug=False)
 
+                # Export noise-free images
+                if noise_free:
+                    # Create folder
+                    if not os.path.isdir('inputs/noise_free_images'):
+                        os.mkdir('inputs/noise_free_images')
+
+                    # Get images and scale
+                    I1 = scale_image(NSA_1.to_img(),mag=False,real=True,compl=True)
+                    I2 = scale_image(NSA_2.to_img(),mag=False,real=True,compl=True)
+
+                    # Export images
+                    save_pyobject([I1,I2],'inputs/noise_free_images/CI_{:03d}_{:02d}_{:02d}.pkl'.format(d,fn,rn))
+
                 # Compress kspaces
                 NSA_1.scale()
                 NSA_2.scale()
@@ -81,7 +94,7 @@ def generate_cspamm(resolutions, frequencies, patients, nb_data):
 
 
 # DENSE images generation
-def generate_dense(resolutions, frequencies, patients, nb_data):
+def generate_dense(resolutions, frequencies, patients, nb_data, noise_free=False):
 
     # Create folder
     if not os.path.isdir('inputs/kspaces'):
@@ -123,6 +136,19 @@ def generate_dense(resolutions, frequencies, patients, nb_data):
 
                 # Generate kspaces
                 NSA_1, NSA_2, REF, mask = I.generate(artifact, phantom, param, debug=False)
+
+                # Export noise-free images
+                if noise_free:
+                    # Create folder
+                    if not os.path.isdir('inputs/noise_free_images'):
+                        os.mkdir('inputs/noise_free_images')
+
+                    # Get images and scale
+                    I1 = scale_image(NSA_1.to_img(),mag=False,real=True,compl=True)
+                    I2 = scale_image(NSA_2.to_img(),mag=False,real=True,compl=True)
+
+                    # Export images
+                    save_pyobject([I1,I2],'inputs/noise_free_images/DI_{:03d}_{:02d}_{:02d}.pkl'.format(d,fn,rn))
 
                 # Compress kspaces
                 NSA_1.scale()
