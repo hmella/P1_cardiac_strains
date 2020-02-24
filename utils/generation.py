@@ -129,4 +129,4 @@ def generate_dense(resolutions, frequencies, patients, nb_data):
                 NSA_2.scale()
 
                 # Export kspaces
-                save_pyobject([NSA_1,NSA_2],'inputs/kspaces/Dk0_{:03d}_{:02d}_{:02d}.pkl'.format(d,fn,rn))
+                save_pyobject([NSA_1,NSA_2],'inputs/kspaces/Dk_{:03d}_{:02d}_{:02d}.pkl'.format(d,fn,rn))
