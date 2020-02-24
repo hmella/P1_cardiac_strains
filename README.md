@@ -1,6 +1,6 @@
 To run the test simply do:
 ```bash
-python3 test.py -gp 1 -Nd 10 -Ns 1000
+python3 test.py -gp 1 -Nd 10 -Ns 1000 -nf 1
 ```
 or
 ```bash
