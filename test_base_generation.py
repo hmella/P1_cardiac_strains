@@ -23,11 +23,13 @@ patients[0:int(patients.size/2)] = False
 ##################
 
 # Generate phantoms
-if args.generate_params:
-    generate_phantoms(nb_samples,nb_data)
+if args.generate_parameters:
+    generate_phantoms(nb_samples,ini=args.initial_data,fin=args.final_data)
 
 # Generate CSPAMM
-generate_cspamm(resolutions, cfrequencies, patients, nb_data, noise_free=noise_free)
+generate_cspamm(resolutions, cfrequencies, patients, ini=args.initial_data,
+                fin=args.final_data, noise_free=noise_free)
 
 # Generate DENSE
-generate_dense(resolutions, dfrequencies, patients, nb_data, noise_free=noise_free)
+generate_dense(resolutions, dfrequencies, patients, ini=args.initial_data,
+              fin=args.final_data, noise_free=noise_free)

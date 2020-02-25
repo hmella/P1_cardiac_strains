@@ -2,7 +2,7 @@ import numpy as np
 from PyMRStrain import *
 
 # Add noise to CSPAMM
-def cspamm_noisy_images(resolutions, frequencies, noise_levels, nb_data):
+def cspamm_noisy_images(resolutions, frequencies, noise_levels, ini=0, fin=0):
 
     # Create folder
     if not os.path.isdir('inputs/noisy_images'):
@@ -15,7 +15,7 @@ def cspamm_noisy_images(resolutions, frequencies, noise_levels, nb_data):
         for (fn, f) in enumerate(frequencies):
          
             # Data loop
-            for d in range(nb_data):
+            for d in range(ini,fin):
 
                 # Load kspaces
                 (NSA_1, NSA_2) = load_pyobject('inputs/kspaces/Ck_{:03d}_{:02d}_{:02d}.pkl'.format(d,fn,rn))
@@ -40,7 +40,7 @@ def cspamm_noisy_images(resolutions, frequencies, noise_levels, nb_data):
 
 
 # Add noise to DENSE
-def dense_noisy_images(resolutions, frequencies, noise_levels, nb_data):
+def dense_noisy_images(resolutions, frequencies, noise_levels, ini=0, fin=0):
 
     # Create folder
     if not os.path.isdir('inputs/noisy_images'):
@@ -53,7 +53,7 @@ def dense_noisy_images(resolutions, frequencies, noise_levels, nb_data):
         for (fn, f) in enumerate(frequencies):
          
             # Data loop
-            for d in range(nb_data):
+            for d in range(ini,fin):
 
                 # Load kspaces
                 (NSA_1, NSA_2) = load_pyobject('inputs/kspaces/Dk_{:03d}_{:02d}_{:02d}.pkl'.format(d,fn,rn))

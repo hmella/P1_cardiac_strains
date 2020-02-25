@@ -23,7 +23,7 @@ patients[0:int(patients.size/2)] = False
 ##################
 
 # Add noise to CSPAMM images
-cspamm_noisy_images(resolutions, cfrequencies, noise_levels, nb_data)
+cspamm_noisy_images(resolutions, cfrequencies, noise_levels, ini=args.initial_data)
 
 # Add noise to DENSE images
-dense_noisy_images(resolutions, dfrequencies, noise_levels, nb_data)
+dense_noisy_images(resolutions, dfrequencies, noise_levels, ini=args.final_data)

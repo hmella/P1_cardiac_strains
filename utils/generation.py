@@ -4,7 +4,7 @@ from PyMRStrain import *
 
 
 # Parameters generation
-def generate_phantoms(nb_samples,nb_data):
+def generate_phantoms(nb_samples,ini=0,fin=0):
 
     # Create folders
     if not os.path.isdir('inputs/'):
@@ -14,7 +14,7 @@ def generate_phantoms(nb_samples,nb_data):
     if not os.path.isdir('inputs/spins'):
         os.mkdir('inputs/spins')
 
-    for d in range(nb_data):
+    for d in range(ini,fin):
 
         # Create parameters
         p = Parameters(time_steps=18)
@@ -28,7 +28,7 @@ def generate_phantoms(nb_samples,nb_data):
 
 
 # CSPAMM images generation
-def generate_cspamm(resolutions, frequencies, patients, nb_data, noise_free=False):
+def generate_cspamm(resolutions, frequencies, patients, ini=0, fin=0, noise_free=False):
 
     # Create folder
     if not os.path.isdir('inputs/kspaces'):
@@ -57,7 +57,7 @@ def generate_cspamm(resolutions, frequencies, patients, nb_data, noise_free=Fals
             I.encoding_frequency = f
          
             # Data loop
-            for d in range(nb_data):
+            for d in range(ini,fin):
 
                 # Load spins and parameter objects
                 spins = load_pyobject('inputs/spins/spins_{:03d}.pkl'.format(d),sep_proc=True)
@@ -94,7 +94,7 @@ def generate_cspamm(resolutions, frequencies, patients, nb_data, noise_free=Fals
 
 
 # DENSE images generation
-def generate_dense(resolutions, frequencies, patients, nb_data, noise_free=False):
+def generate_dense(resolutions, frequencies, patients, ini=0, fin=0, noise_free=False):
 
     # Create folder
     if not os.path.isdir('inputs/kspaces'):
@@ -122,7 +122,7 @@ def generate_dense(resolutions, frequencies, patients, nb_data, noise_free=False
             I.encoding_frequency = f
          
             # Data loop
-            for d in range(nb_data):
+            for d in range(ini,fin):
 
                 # Load spins and parameter objects
                 spins = load_pyobject('inputs/spins/spins_{:03d}.pkl'.format(d),sep_proc=True)
