@@ -50,6 +50,11 @@ def generate_cspamm(resolutions, frequencies, patients, ini=0, fin=0, noise_free
                   oversampling_factor=1,
                   phase_profiles=r[1])
 
+        # Filter specifications
+        I.filter = 'Riesz'
+        I.filter_width = 0.8
+        I.filter_lift = 0.3
+
         # Frequencies loop
         for (fn, f) in enumerate(frequencies):
 
@@ -115,6 +120,11 @@ def generate_dense(resolutions, frequencies, patients, ini=0, fin=0, noise_free=
                   oversampling_factor=1,
                   phase_profiles=r[1])
 
+        # Filter specifications
+        I.filter = 'Riesz'
+        I.filter_width = 0.8
+        I.filter_lift = 0.3
+
         # Frequencies loop
         for (fn, f) in enumerate(frequencies):
 
@@ -146,6 +156,14 @@ def generate_dense(resolutions, frequencies, patients, ini=0, fin=0, noise_free=
                     # Get images and scale
                     I1 = scale_image(NSA_1.to_img(),mag=False,real=True,compl=True)
                     I2 = scale_image(NSA_2.to_img(),mag=False,real=True,compl=True)
+
+                    # Plot test
+                    if MPI_rank==0:
+                      III1 = NSA_1.to_img()
+                      III2 = NSA_2.to_img()
+                      III = III1 - III2
+                      multi_slice_viewer(np.abs(NSA_1.k_msk[...,0,0,:]))
+                      multi_slice_viewer(np.abs(III[...,0,0,:]))
 
                     # Export images
                     save_pyobject([I1,I2],'inputs/noise_free_images/DI_{:03d}_{:02d}_{:02d}.pkl'.format(d,fn,rn))
