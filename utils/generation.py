@@ -18,6 +18,7 @@ def generate_phantoms(nb_samples,ini=0,fin=0):
 
         # Create parameters
         p = Parameters(time_steps=18)
+        p.h = 0.008
 
         # Create spins
         s = Spins(Nb_samples=nb_samples,parameters=p)
