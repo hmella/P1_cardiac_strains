@@ -1,11 +1,11 @@
 import numpy as np
 
 # Resolutions
-resolutions = [np.array([33, 33, 1]),    # pixel_size = 3.0  [mm]
-               np.array([40, 40, 1]),    # pixel_size = 2.5  [mm]
-               np.array([50, 50, 1]),    # pixel_size = 2.0  [mm]
-               np.array([67, 67, 1]),    # pixel_size = 1.5  [mm]
-               np.array([100, 100, 1])]  # pixel_size = 1.0  [mm]
+resolutions = [2*np.array([33, 33, 1]),    # pixel_size = 3.0  [mm]
+               2*np.array([40, 40, 1]),    # pixel_size = 2.5  [mm]
+               2*np.array([50, 50, 1]),    # pixel_size = 2.0  [mm]
+               2*np.array([67, 67, 1]),    # pixel_size = 1.5  [mm]
+               2*np.array([100, 100, 1])]  # pixel_size = 1.0  [mm]
 
 # Encoding frequencies
 tag_spacings = [0.0080, 0.0100, 0.0120, 0.0140, 0.0160] # tag spacings [m]

@@ -7,12 +7,10 @@ from PyMRStrain import *
 def generate_phantoms(nb_samples,ini=0,fin=0):
 
     # Create folders
-    if not os.path.isdir('inputs/'):
-        os.mkdir('inputs/')
     if not os.path.isdir('inputs/parameters'):
-        os.mkdir('inputs/parameters')
+        os.makedirs('inputs/parameters',exist_ok=True)
     if not os.path.isdir('inputs/spins'):
-        os.mkdir('inputs/spins')
+        os.makedirs('inputs/spins',exist_ok=True)
 
     for d in range(ini,fin):
 
@@ -33,13 +31,15 @@ def generate_cspamm(resolutions, frequencies, patients, ini=0, fin=0, noise_free
 
     # Create folder
     if not os.path.isdir('inputs/kspaces'):
-        os.mkdir('inputs/kspaces')
+        os.makedirs('inputs/kspaces',exist_ok=True)
+    if not os.path.isdir('inputs/masks'):
+        os.makedirs('inputs/masks',exist_ok=True)
 
     # Resolutions loop
     for (rn, r) in enumerate(resolutions):
 
         # Create image
-        I = CSPAMMImage(FOV=np.array([0.1, 0.1, 0.008]),
+        I = CSPAMMImage(FOV=np.array([0.2, 0.2, 0.008]),
                   center=np.array([0.0,0.0,0.0]),
                   resolution=r,
                   encoding_frequency=np.array([0,0,0]),
@@ -76,7 +76,7 @@ def generate_cspamm(resolutions, frequencies, patients, ini=0, fin=0, noise_free
                 artifact = None
 
                 # Generate kspaces
-                NSA_1, NSA_2, REF, mask = I.generate(artifact, phantom, param, debug=False)
+                NSA_1, NSA_2, mask = I.generate(artifact, phantom, param, debug=False)
 
                 # Export noise-free images
                 if noise_free:
@@ -95,8 +95,12 @@ def generate_cspamm(resolutions, frequencies, patients, ini=0, fin=0, noise_free
                 NSA_1.scale()
                 NSA_2.scale()
 
-                # Export kspaces
-                save_pyobject([NSA_1,NSA_2],'inputs/kspaces/Ck_{:03d}_{:02d}_{:02d}.pkl'.format(d,fn,rn))
+                # Get mask
+                mask = np.abs(mask.to_img()) > 100
+
+                # Export kspaces and masks
+                save_pyobject([NSA_1,NSA_2],'inputs/kspaces/CI_{:03d}_{:02d}_{:02d}.pkl'.format(d,fn,rn))
+                save_pyobject(mask,'inputs/masks/CI_{:03d}_{:02d}_{:02d}.pkl'.format(d,fn,rn))
 
 
 # DENSE images generation
@@ -104,7 +108,9 @@ def generate_dense(resolutions, frequencies, patients, ini=0, fin=0, noise_free=
 
     # Create folder
     if not os.path.isdir('inputs/kspaces'):
-        os.mkdir('inputs/kspaces')
+        os.makedirs('inputs/kspaces',exist_ok=True)
+    if not os.path.isdir('inputs/masks'):
+        os.makedirs('inputs/masks',exist_ok=True)
 
     # Resolutions loop
     for (rn, r) in enumerate(resolutions):
@@ -146,7 +152,7 @@ def generate_dense(resolutions, frequencies, patients, ini=0, fin=0, noise_free=
                 artifact = None
 
                 # Generate kspaces
-                NSA_1, NSA_2, REF, mask = I.generate(artifact, phantom, param, debug=False)
+                NSA_1, NSA_2, mask = I.generate(artifact, phantom, param, debug=False)
 
                 # Export noise-free images
                 if noise_free:
@@ -158,14 +164,6 @@ def generate_dense(resolutions, frequencies, patients, ini=0, fin=0, noise_free=
                     I1 = scale_image(NSA_1.to_img(),mag=False,real=True,compl=True)
                     I2 = scale_image(NSA_2.to_img(),mag=False,real=True,compl=True)
 
-                    # Plot test
-                    if MPI_rank==0:
-                      III1 = NSA_1.to_img()
-                      III2 = NSA_2.to_img()
-                      III = III1 - III2
-                      multi_slice_viewer(np.abs(NSA_1.k_msk[...,0,0,:]))
-                      multi_slice_viewer(np.abs(III[...,0,0,:]))
-
                     # Export images
                     save_pyobject([I1,I2],'inputs/noise_free_images/DI_{:03d}_{:02d}_{:02d}.pkl'.format(d,fn,rn))
 
@@ -173,5 +171,9 @@ def generate_dense(resolutions, frequencies, patients, ini=0, fin=0, noise_free=
                 NSA_1.scale()
                 NSA_2.scale()
 
+                # Get mask
+                mask = np.abs(mask.to_img()) > 100
+
                 # Export kspaces
-                save_pyobject([NSA_1,NSA_2],'inputs/kspaces/Dk_{:03d}_{:02d}_{:02d}.pkl'.format(d,fn,rn))
+                save_pyobject([NSA_1,NSA_2],'inputs/kspaces/DI_{:03d}_{:02d}_{:02d}.pkl'.format(d,fn,rn))
+                save_pyobject(mask,'inputs/masks/DI_{:03d}_{:02d}_{:02d}.pkl'.format(d,fn,rn))
