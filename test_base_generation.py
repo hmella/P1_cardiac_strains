@@ -2,16 +2,8 @@ import numpy as np
 
 from utils.args_parser import *
 from utils.generation import generate_cspamm, generate_dense, generate_phantoms
-from utils.im_parameters import cfrequencies, dfrequencies, resolutions
-
-##################
-# INPUT PARAMETERS
-##################
-
-# Patients array
-patients = np.ones([args.nb_data,],dtype=np.bool)
-patients[0:int(patients.size/2)] = False 
-
+from utils.im_parameters import (cfrequencies, dfrequencies, patients_arr,
+                                 resolutions)
 
 ##################
 # DATA GENERATION
@@ -23,10 +15,10 @@ if args.generate_parameters:
 
 # Generate CSPAMM
 if args.cspamm:
-    generate_cspamm(resolutions, cfrequencies, patients, ini=args.initial_data,
+    generate_cspamm(resolutions, cfrequencies, patients_arr, ini=args.initial_data,
                     fin=args.final_data, noise_free=args.noise_free)
 
 # Generate DENSE
 if args.dense:
-    generate_dense(resolutions, dfrequencies, patients, ini=args.initial_data,
+    generate_dense(resolutions, dfrequencies, patients_arr, ini=args.initial_data,
                   fin=args.final_data, noise_free=args.noise_free)

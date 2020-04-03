@@ -16,9 +16,6 @@ help_str = "Choose if DENSE images are generated or not"
 parser.add_argument("--dense", "-D", help=help_str,
     action='store_true')
 
-help_str = "Number of data"
-parser.add_argument("--nb-data", "-Nd", help=help_str, type=int)
-
 help_str = "Number of spins samples"
 parser.add_argument("--nb-samples", "-Ns", help=help_str, type=int)
 
