@@ -19,7 +19,8 @@ function [I,M] = P1_read_CSPAMM(IPath,MPath,NbPixels)
     I = squeeze(I(:,:,1,:,:));
     M = squeeze(M(:,:,1,1,:));
 
-    %
+    % 
+    Nfr = size(I,4);
     for i=1:Nfr
         M(:,:,i) = M(:,:,i)';
         I(:,:,1,i) = I(:,:,1,i)';

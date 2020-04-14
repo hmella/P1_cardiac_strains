@@ -20,8 +20,9 @@ end
    
 %% INPUT DATA
 % Analysis to be performed
-RUN_EXACT   = true;
-RUN_DENSE   = true;
+RUN_EXACT   = false;
+RUN_DENSE   = false;
+RUN_HARP    = false;
 RUN_SinMod  = true;
 RUN_ERROR   = true;
 
@@ -37,19 +38,15 @@ Nfr = numel(fr);
 %% FILTERS SPECS (for image processing)
 % Filter specs
 KSpaceFilter = 'Transmission';
-BTW_cutoff = [1 1 1 1];
+BTW_cutoff = 1;
 BTW_order  = [];
 KSpaceFollowing = false;
-
-% KSpaceFilter = 'Butterworth';
-% BTW_cutoff = [12, 10, 9, 7];
-% BTW_order  = 10;
-% KSpaceFollowing = false;
 
 %% IMAGING PARAMETERS
 % Resolutions
 resolutions = [33 40 50 67 100];
-FOV  = [0.1 0.1];
+FOV = [0.1 0.1];
+pxsz = 0.1./resolutions;
 
 % Encoding frequencies
 tag_spac = [0.0080, 0.0100, 0.0120, 0.0140, 0.0160]; % [m]
@@ -152,6 +149,90 @@ if RUN_EXACT
 end
 
 
+%% HARP analysis
+if RUN_HARP
+    for d=1:nod
+        for f=1:nos
+
+            % SPAMM encoding frequency
+            ke = [ke_spamm(f) ke_spamm(f)];        
+
+            for r=1:nor
+
+                % Load data
+                filename = sprintf('CI_%03d_%02d_%02d.mat',d-1,f-1,r-1);
+                IPath = [input_folder,'noise_free_images/',filename];
+                MPath = [input_folder,'masks/',filename];
+                [I,M] = P1_read_CSPAMM(IPath,MPath,1);
+                
+                % Debug
+                fprintf('\n Processing data %d, tag spacing %d, resolution %d',d,f,r)
+
+                % Image size
+                Isz = size(I);
+
+                % HARP displacements
+                args = struct(...
+                    'Mask',             M,...
+                    'EncFreq',          ke*pxsz(r),...
+                    'FOV',              Isz(1:2),...
+                    'PixelSize',        [1 1],...
+                    'Frames',           fr,...
+                    'tol',              1e-2,...
+                    'maxiter',          30,...
+                    'GradientEval',     5,...
+                    'SearchWindow',     [3,3],...
+                    'PhaseWindow',      [2,2],...
+                    'show',             false,...
+                    'ShowConvergence',  false,...
+                    'Seed',             'auto',...
+                    'theta',            [0 pi/2],...
+                    'Connectivity',     8,...
+                    'KSpaceFilter',     KSpaceFilter,...
+                    'BTW_cutoff',       BTW_cutoff,...
+                    'BTW_order',        BTW_order,...
+                    'KSpaceFollowing',  KSpaceFollowing);
+                [ux_HARP, uy_HARP] = HARPTrackingOsman(I, args);
+                dxh = ux_HARP;    % pixels
+                dyh = uy_HARP;    % pixels
+
+                % HARP strain
+                % TODO: ELIMINAR OPCION ADICIONAL AÑADIDA A mypixelstrain
+                [X, Y] = meshgrid(1:size(ux_HARP,2), 1:size(ux_HARP,1));
+                options = struct(...
+                    'X', X,...
+                    'Y', Y,...
+                    'mask',M(:,:,1),...
+                    'times',1:Nfr,...
+                    'dx', ux_HARP,...
+                    'dy', uy_HARP,...
+                    'Origin', [],...
+                    'checknans',  false,...
+                    'Orientation', []);
+                st = mypixelstrain(options);
+                RR_HARP = NaN([Isz(1) Isz(2) Nfr]);
+                CC_HARP = NaN([Isz(1) Isz(2) Nfr]);
+                RR_HARP(repmat(st.maskimage(:,:,1),[1 1 Nfr])) = st.RR(:);
+                CC_HARP(repmat(st.maskimage(:,:,1),[1 1 Nfr])) = st.CC(:);
+
+%                 figure(1)
+%                 subplot 121
+%                 imagesc(CC_HARP(:,:,8)); colorbar
+%                 subplot 122
+%                 imagesc(RR_HARP(:,:,8)); colorbar
+%                 pause(0.1)
+
+                % Write displacement and strain
+                mask_harp = st.maskimage(:,:,1);
+                save([outputs{3},filename],...
+                      'dxh','dyh','RR_HARP','CC_HARP','mask_harp');
+
+            end
+        end
+    end
+end
+
+
 %% SinMod analysis
 if RUN_SinMod
     for d=1:nod
@@ -168,9 +249,8 @@ if RUN_SinMod
                 MPath = [input_folder,'masks/',filename];
                 [I,M] = P1_read_CSPAMM(IPath,MPath,1);
 
-                
                 % Debug
-                fprintf('\n Processing data %d, lambda %d',d-1,f-1)
+                fprintf('\n Processing data %d, tag spacing %d, resolution %d',d,f,r)
 
                 % Image size
                 Isz = size(I);
@@ -178,7 +258,7 @@ if RUN_SinMod
                 % SinMod displacements
                 options = struct(...
                     'Mask',              M,...
-                    'ke',                ke*pxsz(1),...
+                    'EncFreq',           ke*pxsz(r),...
                     'FOV',               Isz(1:2),...
                     'PixelSize',         [1 1],...
                     'SearchWindow',      [2,2],...
@@ -189,12 +269,12 @@ if RUN_SinMod
                     'Seed',              'auto',...
                     'Connectivity',      8,...
                     'CheckQuality',      true,...
-                    'QualityPower',      2,...
+                    'QualityPower',      8,...
                     'QualityFilterSize', 15,...
                     'Window',            false,...
                     'Frame2Frame',       true,...
                     'KSpaceFilter',      KSpaceFilter,...
-                    'BTW_cutoff',        BTW_cutoff(f),...
+                    'BTW_cutoff',        BTW_cutoff,...
                     'BTW_order',         BTW_order,...
                     'KSpaceFollowing',   KSpaceFollowing);
                 [us] = get_SinMod_motion(I, options);
@@ -218,98 +298,14 @@ if RUN_SinMod
                 RR_SinMod(repmat(st.maskimage(:,:,1),[1 1 Nfr])) = st.RR(:);
                 CC_SinMod(repmat(st.maskimage(:,:,1),[1 1 Nfr])) = st.CC(:);
 
-                % figure(1)
-                % imagesc(CC_SinMod(:,:,end))
-                % axis off equal
-                % colormap jet
-                % pause
+                figure(1)
+                imagesc(CC_SinMod(:,:,8),'AlphaData',st.maskimage)
+                colormap jet
+                pause
 
                 % Write displacement and strain
                 mask_sinmod = st.maskimage(:,:,1);
                 save([outputs{4},filename],'dxs','dys','RR_SinMod','CC_SinMod','mask_sinmod');
-
-            end
-        end
-    end
-end
-
-%% HARP analysis
-if RUN_HARP
-    for d=1:nod
-        for f=1:nos
-
-            % SPAMM encoding frequency
-            ke = [ke_spamm(f) ke_spamm(f)];        
-
-            for r=1:nor
-
-                % Load data
-                filename = sprintf('CI_%03d_%02d_%02d.mat',d-1,f-1,r-1);
-                IPath = [input_folder,'noise_free_images/',filename];
-                MPath = [input_folder,'masks/',filename];
-                [I,M] = P1_read_CSPAMM(IPath,MPath,1);
-                
-                % Debug
-                fprintf('\n Processing data %d, lambda %d',d-1,f-1)
-
-                % Image size
-                Isz = size(I);
-
-                % HARP displacements
-                args = struct(...
-                    'Mask',             M,...
-                    'ke',               ke*pxsz(1),...
-                    'FOV',              Isz(1:2),...
-                    'PixelSize',        [1 1],...
-                    'Frames',           fr,...
-                    'tol',              1e-2,...
-                    'maxiter',          30,...
-                    'GradientEval',     5,...
-                    'SearchWindow',     [3,3],...
-                    'PhaseWindow',      [2,2],...
-                    'show',             false,...
-                    'ShowConvergence',  false,...
-                    'Seed',             'auto',...
-                    'theta',            [0 pi/2],...
-                    'Connectivity',     8,...
-                    'KSpaceFilter',     KSpaceFilter,...
-                    'BTW_cutoff',       BTW_cutoff(f),...
-                    'BTW_order',        BTW_order,...
-                    'KSpaceFollowing',  KSpaceFollowing);
-                [ux_HARP, uy_HARP] = HARPTracking(I, args);
-                dxh = ux_HARP;    % pixels
-                dyh = uy_HARP;    % pixels
-
-                % HARP strain
-                % TODO: ELIMINAR OPCION ADICIONAL AÑADIDA A mypixelstrain
-                [X, Y] = meshgrid(1:size(ux_HARP,2), 1:size(ux_HARP,1));
-                options = struct(...
-                    'X', X,...
-                    'Y', Y,...
-                    'mask',M(:,:,1),...
-                    'times',1:Nfr,...
-                    'dx', ux_HARP,...
-                    'dy', uy_HARP,...
-                    'Origin', [],...
-                    'checknans',  false,...
-                    'Orientation', []);
-                st = mypixelstrain(options);
-                RR_HARP = NaN([Isz(1) Isz(2) Nfr]);
-                CC_HARP = NaN([Isz(1) Isz(2) Nfr]);
-                RR_HARP(repmat(st.maskimage(:,:,1),[1 1 Nfr])) = st.RR(:);
-                CC_HARP(repmat(st.maskimage(:,:,1),[1 1 Nfr])) = st.CC(:);
-
-                % figure(1)
-                % subplot 121
-                % imagesc(CC_HARP(:,:,end)); colorbar
-                % subplot 122
-                % imagesc(RR_HARP(:,:,end)); colorbar
-                % pause(0.1)
-
-                % Write displacement and strain
-                mask_harp = st.maskimage(:,:,1);
-                save([outputs{3},filename],...
-                      'dxh','dyh','RR_HARP','CC_HARP','mask_harp');
 
             end
         end
