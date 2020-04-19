@@ -20,11 +20,11 @@ end
    
 %% INPUT DATA
 % Analysis to be performed
-RUN_EXACT   = false;
+RUN_EXACT   = true;
 RUN_DENSE   = false;
 RUN_HARP    = false;
-RUN_SinMod  = true;
-RUN_ERROR   = true;
+RUN_SinMod  = false;
+RUN_ERROR   = false;
 
 % Errors to be estimated
 HARP_ERROR = true;
@@ -32,7 +32,7 @@ SinMod_ERROR = true;
 DENSE_ERROR = true;
 
 % Number of cardiac phases
-fr  = 1:18;
+fr  = 1:20;
 Nfr = numel(fr);
 
 %% FILTERS SPECS (for image processing)
@@ -88,15 +88,18 @@ nRMSE_RR = struct(...
 %% EXACT ANALYSIS
 if RUN_EXACT
     for d=1:nod
-        for f=1:nos
-            for r=1:nor
-
+        for f=1
+            for r=1%1:nor
 
                 % Load data
-                filename = sprintf('I_d%02d_f%01d_r%01d.mat',d-1,f-1,r-1);
-                IPath = [input_folder,'reference_images/',filename];
+                filename = sprintf('EI_%03d_%02d_%02d.mat',d-1,f-1,r-1);
+                IPath = [input_folder,'noise_free_images/',filename];
                 MPath = [input_folder,'masks/',filename];
-                [I,M] = P1_read_EXACT(IPath,MPath,1);
+                [I,M] = P1_read_EXACT(IPath,MPath,0);
+                
+%                 figure(3)
+%                 imagesc(abs(I(:,:,1,10)))
+%                 pause
                 
                 % Debug
                 fprintf('\n Processing EXACT data (%d/%d)',d-1,nod)
@@ -105,7 +108,14 @@ if RUN_EXACT
                 Isz = size(M);            
                 
                 % Get displacements in pixels
-                ue = -0.01*angle(I)/0.001;
+                ue = 0.01*angle(I)/pxsz(r);
+
+                figure(2)
+                u_mag = sqrt(ue(:,:,1,:).^2 + ue(:,:,2,:).^2);
+                imagesc(u_mag(:,:,10),'AlphaData',M(:,:,10));
+                caxis([min(u_mag(M(:,:,:))) max(u_mag(M(:,:,:)))])
+                colormap jet
+                pause
                 
                 % Displacement
                 ux_EXACT = squeeze(ue(:,:,1,:));
@@ -132,12 +142,14 @@ if RUN_EXACT
                 RR_EXACT(repmat(st.maskimage(:,:,1),[1 1 Nfr])) = st.RR(:);
                 CC_EXACT(repmat(st.maskimage(:,:,1),[1 1 Nfr])) = st.CC(:);
 
-                % figure(1)
-                % subplot 121;
-                % imagesc(CC_EXACT(:,:,end)); colorbar; %caxis([-0.2 0.2])
-                % subplot 122;
-                % imagesc(RR_EXACT(:,:,end)); colorbar; %caxis([-0.2 0.2])
-                % pause(0.1)
+                figure(1)
+                subplot 121;
+                imagesc(CC_EXACT(:,:,8),'AlphaData',st.maskimage);
+                colormap(flipud(jet)); colorbar;
+                subplot 122;
+                imagesc(RR_EXACT(:,:,8),'AlphaData',st.maskimage);
+                colormap(flipud(jet)); colorbar;
+                pause
                 
                 % Write exact displacement and strain
                 mask_exact = st.maskimage(:,:,1);
@@ -197,7 +209,6 @@ if RUN_HARP
                 dyh = uy_HARP;    % pixels
 
                 % HARP strain
-                % TODO: ELIMINAR OPCION ADICIONAL AÑADIDA A mypixelstrain
                 [X, Y] = meshgrid(1:size(ux_HARP,2), 1:size(ux_HARP,1));
                 options = struct(...
                     'X', X,...

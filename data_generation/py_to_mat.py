@@ -6,9 +6,16 @@ from PyMRStrain.Math import itok, ktoi
 from PyMRStrain.Plotter import multi_slice_viewer
 from scipy.io import savemat
 
+def if_exact(filename):
+    return filename[0:2] == 'EI'
+
 # Input folders
 folders = ['inputs/kspaces/','inputs/masks/']
 
+# Output folders
+os.makedirs('inputs/noise_free_images',exist_ok=True)
+
+# Convert files
 for folder in folders:
     for i, filename in enumerate(os.listdir(folder)):
         fname, ext = os.path.splitext(filename)
@@ -19,12 +26,17 @@ for folder in folders:
             if folder is not 'inputs/masks/':         
 
                 # Load kspaces and rescale
-                [K1,K2] = load_pyobject(folder+filename)
-                K1.rescale()
-                K2.rescale()
+                if if_exact(fname):
+                    K1 = load_pyobject(folder+filename)
+                    K1.rescale()
+                    I = ktoi(K1.k)
+                else:
+                    [K1,K2] = load_pyobject(folder+filename)
+                    K1.rescale()
+                    K2.rescale()
+                    I = ktoi(K1.k - K2.k)
 
-                # Generate and scale complementary images 
-                I = ktoi(K1.k - K2.k)
+                # Scale image
                 I = scale_image(I,mag=False,real=True,compl=True)
 
                 # Export matlab object
@@ -35,4 +47,4 @@ for folder in folders:
                 # Load mask
                 I = load_pyobject(folder+filename)
 
-                savemat(folder+fname+'.mat',{'M': I})          
+                savemat(folder+fname+'.mat',{'M': I})

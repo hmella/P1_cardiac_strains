@@ -20,6 +20,7 @@ function [I,M] = P1_read_EXACT(IPath,MPath,NbPixels)
     M = squeeze(M(:,:,1,1,:));
 
     %
+    Nfr = size(I,4);
     for i=1:Nfr
         I(:,:,1,i) = I(:,:,1,i)';
         I(:,:,2,i) = I(:,:,2,i)';
@@ -27,6 +28,6 @@ function [I,M] = P1_read_EXACT(IPath,MPath,NbPixels)
     end
     
     % Remove outer pixels
-    M = removeOuterPixels(M, 1);
+    M = removeOuterPixels(M, NbPixels);
 
 end

@@ -20,6 +20,6 @@ patients_arr = np.ones([100,],dtype=np.bool)
 patients_arr[0:int(patients_arr.size/2)] = False
 
 # Filter specs
-filter       = 'Riesz'
+filter       = None
 filter_width = 0.8
 filter_lift  = 0.3
