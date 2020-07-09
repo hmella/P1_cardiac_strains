@@ -19,13 +19,13 @@ function [I,M] = P1_read_CSPAMM(IPath,MPath,NbPixels)
     I = squeeze(I(:,:,1,:,:));
     M = squeeze(M(:,:,1,1,:));
 
-    % 
-    Nfr = size(I,4);
-    for i=1:Nfr
-        M(:,:,i) = M(:,:,i)';
-        I(:,:,1,i) = I(:,:,1,i)';
-        I(:,:,2,i) = I(:,:,2,i)';
-    end
+%     % 
+%     Nfr = size(I,4);
+%     for i=1:Nfr
+%         M(:,:,i) = M(:,:,i)';
+%         I(:,:,1,i) = I(:,:,1,i)';
+%         I(:,:,2,i) = I(:,:,2,i)';
+%     end
 
     % Remove outer pixels
     M = removeOuterPixels(M, NbPixels);

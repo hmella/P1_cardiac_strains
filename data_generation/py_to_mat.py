@@ -10,10 +10,12 @@ def if_exact(filename):
     return filename[0:2] == 'EI'
 
 # Input folders
-folders = ['inputs/kspaces/','inputs/masks/']
+# folders = ['inputs/kspaces/','inputs/masks/','inputs/3D_experiments/']
+folders = ['inputs/3D_experiments/']
 
 # Output folders
 os.makedirs('inputs/noise_free_images',exist_ok=True)
+os.makedirs('inputs/3D_experiments',exist_ok=True)
 
 # Convert files
 for folder in folders:
@@ -23,7 +25,20 @@ for folder in folders:
 
             if np.mod(i, 50) == 0: print(i)
 
-            if folder is not 'inputs/masks/':         
+            if folder is 'inputs/3D_experiments/':
+
+                # Load images
+                if fname[0]=='R':
+                    [I1, mask] = load_pyobject(folder+filename)
+                    I2 = -1
+                else:
+                    [I1, I2, mask] = load_pyobject(folder+filename)
+
+                # Export matlab object
+                I = {'I1': I1, 'I2': I2, 'M': mask}
+                savemat('inputs/3D_experiments/'+fname+'.mat',{'I': I})
+
+            elif folder is not 'inputs/masks/':         
 
                 # Load kspaces and rescale
                 if if_exact(fname):

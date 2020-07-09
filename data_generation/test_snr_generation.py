@@ -71,21 +71,22 @@ for folder in folders:
                 nS1, nS2 = (S1.k + f_noise_1), (S2.k + f_noise_2)
                 nD1, nD2 = (D1.k + f_noise_1), (D2.k + f_noise_2)
 
-                # import matplotlib.pyplot as plt
-                # fig, ax = plt.subplots(1,2)
-                # ax[0].imshow(np.abs(nD1[...,0,0,9]))
-                # ax[1].imshow(np.abs(nD1[...,0,0,9] - nD2[...,0,0,9]))
-                # plt.show()
-
                 # kspace to images
                 IH1, IH2 = ktoi(nH1), ktoi(nH2)
                 IS1, IS2 = ktoi(nS1), ktoi(nS2)
                 ID1, ID2 = ktoi(nD1), ktoi(nD2)
 
+                if n == 1:
+                    s = np.std(np.real(noise_1-noise_2).flatten())
+                    m = np.max(np.abs(ktoi(D1.k-D2.k).flatten()))
+                    print(' Noise std.: {:.2f}, max. image intensity: {:.2f}, ratio: {:.2f}'.format(s,m,m/s))
+
                 # Scale images
                 IH = scale_image(IH1-IH2, mag=False,real=True,compl=True)
-                IS = scale_image(IS1-IS2, mag=False,real=True,compl=True)
+                IS = scale_image(np.real(noise_1-noise_2), mag=False,real=True,compl=True)
+                # IS = scale_image(IS1-IS2, mag=False,real=True,compl=True)
                 ID = scale_image(ID1-ID2, mag=False,real=True,compl=True)
+                # noise = scale_image(noise, mag=False,real=True,compl=True)
 
                 # Output filenames
                 H_filename = 'HI_{:03.0f}_{:02.0f}_{:02.0f}.pkl'.format(d,n,r)
@@ -96,6 +97,8 @@ for folder in folders:
                 savemat(output_folder+H_filename[:-4]+'.mat',{'I': IH})
                 savemat(output_folder+S_filename[:-4]+'.mat',{'I': IS})
                 savemat(output_folder+D_filename[:-4]+'.mat',{'I': ID})
+
+        print('')
 
 
 # Generate EXACT images
