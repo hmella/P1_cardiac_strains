@@ -97,21 +97,23 @@ for view={'base','mid','apex'}
 %     ID = ktoi(h.*itok(ID));
 
     % Plots
-    h = figure('Visible','off');
-    t = tiledlayout(2,2,'TileSpacing','compact','Padding','compact');
-    nexttile
-    imagesc(abs(itok(IC(:,:,1,8)))); colormap gray
-    axis equal off; caxis([0 3.0e+04])
-    nexttile
-    imagesc(abs((IC(:,:,1,8)))); colormap gray
-    axis equal off;
-    nexttile
-    imagesc(abs(itok(ID(:,:,1,8)))); colormap gray
-    axis equal off; caxis([0 1.75e+04])
-    nexttile
-    imagesc(angle((ID(:,:,1,8)))); colormap gray
-    axis equal off
-    print('-depsc','-r1200',sprintf('kspaces_%s',view{1}))
+    for i=1:Nfr
+        h = figure('Visible','off');
+        t = tiledlayout(2,2,'TileSpacing','compact','Padding','compact');
+        nexttile
+        imagesc(abs(itok(IC(:,:,1,i)))); colormap gray
+        axis equal off; caxis([0 2.3091e+03])
+        nexttile
+        imagesc(abs((IC(:,:,1,i)))); colormap gray
+        axis equal off;
+        nexttile
+        imagesc(abs(itok(ID(:,:,1,i)))); colormap gray
+        axis equal off; caxis([0 2.0098e+03])
+        nexttile
+        imagesc(angle((ID(:,:,1,i)))); colormap gray
+        axis equal off
+        print('-depsc','-r1200',sprintf('images/kspaces_%s_%2d',view{1},i))
+    end
 
 end
     
@@ -219,6 +221,9 @@ if RUN_HARP
         % Debug
         fprintf('\n  Processing CSPAMM data using HARP (%s view)',view{1})
 
+        % SPAMM encoding frequency
+        ke = [ke_spamm ke_spamm];        
+        
         % Load data
         filename = sprintf('CI_%s.mat',view{1});
         IPath = [input_folder,'3D_experiments/',filename];
@@ -234,49 +239,45 @@ if RUN_HARP
             I(:,:,2,i) = I(:,:,2,i)';
         end
 
-%         figure(1)
-%         imagesc(abs(itok(I(:,:,10))))
-%         colormap gray
-%         caxis([0 2500])
-%         axis equal off
-%         pause        
+        % Filtered image
+        ke_norm = ke.*pxszC;
+        H = HARPFilter(struct('Image',I,'CentralFreq',ke_norm,'Direction',deg2rad([0 90]),...
+                            'FilterType','Butterworth','Butterworth_cuttoff',ke(1)/30,'Butterworth_order',5));
+        If = H.filter(I);        
         
-        % SPAMM encoding frequency
-        ke = [ke_spamm ke_spamm];
+%         figure(1),
+%         subplot 121
+%         imagesc(abs(itok(I(:,:,1,10))))
+%         subplot 122
+%         imagesc(abs(itok(If(:,:,1,10))))
+%         pause        
 
         % Image size
         Isz = size(I);
 
+        % ROI
+        [X,Y] = meshgrid(1:Isz(2),1:Isz(1));
+        m = M(:,:,1);
+        ROI = [min(Y(m))-1, max(Y(m))+1,...
+               min(X(m))-1, max(X(m))+1];                        
+
         % HARP displacements
         try
             args = struct(...
-                'Mask',             M,...
-                'EncFreq',          ke,...
-                'FOV',              Isz(1:2).*pxszC,...
-                'PixelSize',        [1 1].*pxszC,...
-                'Frames',           fr,...
-                'tol',              1e-2,...
-                'maxiter',          30,...
-                'GradientEval',     5,...
-                'SearchWindow',     [0,0],...
-                'PhaseWindow',      [2,2],...
-                'Show',             false,...
-                'ShowConvergence',  false,...
-                'Seed',             'auto',...
-                'theta',            [0 pi/2],...
-                'Connectivity',     8,...
-                'KspaceFilter',     KspaceFilter,...
-                'BTW_cutoff',       BTW_cutoff,...
-                'BTW_order',        BTW_order,...
-                'KspaceFollowing',  KspaceFollowing);
-            [dxh, dyh] = HARPTrackingOsman(I, args);
-
-            % Prepare displacements
-            displacements = permute(cat(4,dxh,dyh),[1 2 4 3]);
-
-            % Temporal fitting
-            tfit_args.Mask = M(:,:,1);
-            [dxh,dyh] = TemporalFitting(displacements,tfit_args);
+                    'Mask',             M,...
+                    'EncFreq',          pxszC.*ke,...
+                    'FOV',              Isz(1:2),...
+                    'PixelSize',        [1 1],....
+                    'Frames',           1:Nfr,...
+                    'Show',             false,...
+                    'TagSpacing',       2*pi/ke(1),...
+                    'SeedPoint',        [],...
+                    'ROI',              ROI,...
+                    'TemporalFitting',  false,...
+                    'TemporalFittingOrder', 10);
+            harp = HARP_SPHR(If, args);
+            dxh = squeeze(harp.RawMotion(:,:,1,:));
+            dyh = squeeze(harp.RawMotion(:,:,2,:));
 
             % HARP strain
             [X, Y] = meshgrid(1:size(dxh,2), 1:size(dyh,1));
@@ -298,10 +299,11 @@ if RUN_HARP
 
 %             figure(1)
 %             subplot 121
-%             imagesc(CC_HARP(:,:,8),'AlphaData',st.maskimage); colorbar
+%             imagesc(CC_HARP(:,:,8),'AlphaData',st.maskimage); colorbar; caxis([-0.5 0.2])
 %             subplot 122
 %             imagesc(RR_HARP(:,:,8),'AlphaData',st.maskimage); colorbar
-%             pause(0.1)
+%             colormap jet
+%             pause
 
             % Write displacement and strain
             mask_harp = st.maskimage(:,:,1);
@@ -323,13 +325,16 @@ if RUN_SinMod
         % Debug
         fprintf('\n  Processing CSPAMM data using SinMod (%s view)',view{1})
 
+        % SPAMMM encoding frequency
+        ke = [ke_spamm ke_spamm];       
+
         % Load data
         filename = sprintf('CI_%s.mat',view{1});
         IPath = [input_folder,'3D_experiments/',filename];
         load(IPath);
         M = squeeze(I.M(:,:,1,1,:));
         I = (squeeze(I.I1 - I.I2));
-        
+               
         % Re-format the images
         Nfr = size(I,4);
         for i=1:Nfr
@@ -337,9 +342,12 @@ if RUN_SinMod
             I(:,:,1,i) = I(:,:,1,i)';
             I(:,:,2,i) = I(:,:,2,i)';
         end
-
-        % SPAMMM encoding frequency
-        ke = [ke_spamm ke_spamm];
+        
+        % Filtered image
+        ke_norm = ke.*pxszC;
+        H = HARPFilter(struct('Image',I,'CentralFreq',ke_norm,'Direction',deg2rad([0 90]),...
+                            'FilterType','Butterworth','Butterworth_cuttoff',ke(1)/30,'Butterworth_order',5));
+        If = H.filter(I);          
 
         % Image size
         Isz = size(I);
@@ -352,32 +360,19 @@ if RUN_SinMod
                 'EncFreq',           ke.*pxszC,...
                 'FOV',               Isz(1:2),...
                 'PixelSize',         [1 1],...
-                'SearchWindow',      [2,2],...
+                'SearchWindow',      [0,0],...
                 'Frames',            1:Nfr,...
-                'show',              true,...
-                'theta',             deg2rad([0 90]),...
-                'UnwrapPhase',       false,...
-                'Seed',              'auto',...
-                'Connectivity',      8,...
-                'CheckQuality',      false,...
+                'Show',              false,...
+                'CheckQuality',      true,...
                 'QualityPower',      8,...
                 'QualityFilterSize', 15,...
-                'Window',            false,...
-                'Frame2Frame',       true,...
-                'KspaceFilter',      KspaceFilter,...
-                'BTW_cutoff',        BTW_cutoff,...
-                'BTW_order',         BTW_order,...
-                'KspaceFollowing',   KspaceFollowing);
-            [us] = get_SinMod_motion(I, options);
-            dxs = squeeze(us(:,:,1,:));
-            dys = squeeze(us(:,:,2,:));
-
-            % Prepare displacements
-            displacements = permute(cat(4,dxs,dys),[1 2 4 3]);
-
-            % Temporal fitting
-            tfit_args.Mask = M(:,:,1);
-            [dxs,dys] = TemporalFitting(displacements,tfit_args);
+                'Filter',            H,...
+                'FrameToFrame',      true,...
+                'TemporalFitting',   false,...
+                'TemporalFittingOrder', 10);
+            sinmod = SinMod(If, options);
+            dxs = squeeze(sinmod.RawMotion(:,:,1,:));
+            dys = squeeze(sinmod.RawMotion(:,:,2,:));
 
             % SinMod Strain
             [X, Y] = meshgrid(1:size(dxs,2), 1:size(dys,1));
@@ -427,6 +422,13 @@ if RUN_DENSE
         M = squeeze(I.M(:,:,1,1,:));
         I = squeeze(I.I1 - I.I2);
 
+        % Image filtering
+        ke_norm = ke_dense.*pxszD;
+        H = HARPFilter(struct('Image',I,'CentralFreq',[0 0],'Direction',deg2rad([90 0]),...
+                            'FilterType','Butterworth','Butterworth_cuttoff',10,...
+                            'Butterworth_order',10));
+        If = H.filter(I);        
+        
         % Re-format the images
         Nfr = size(I,4);
         for i=1:Nfr
@@ -437,18 +439,6 @@ if RUN_DENSE
 
         % Image size
         Isz = size(I);
-
-        % Image filtering
-        h = ButterworthFilter(Isz(1:2),Isz(1:2)/2,40,5);
-%         figure(1)
-%         subplot 131
-%         imagesc(abs(itok(I(:,:,1,10))))
-%         subplot 132
-%         imagesc(h.*abs(itok(I(:,:,1,10))))
-%         subplot 133
-%         imagesc(h)
-%         pause
-        I = ktoi(h.*itok(I));
 
         % Displacement
         u = angle(I);
@@ -464,23 +454,16 @@ if RUN_DENSE
                 'ResampleMethod',       'gridfit',...
                 'SpatialSmoothing',     0.8,...
                 'SeedFrame',            1,...
-                'TemporalOrder',        7,...
+                'TemporalOrder',        -1,...
                 'Seed',                 'auto',...
                 'OptionsPanel',         false,...
-                'UnwrapConnectivity',   8);
+                'UnwrapConnectivity',   4);
             try
                 [dxd, dyd] = GetDenseDisplacement(u, args);
             catch
                 args.OptionsPanel = true;
                 [dxd, dyd] = GetDenseDisplacement(u, args);
             end
-
-            % Prepare displacements
-            displacements = permute(cat(4,dxd,dyd),[1 2 4 3]); 
-
-            % Temporal fitting
-            tfit_args.Mask = M(:,:,1);
-            [dxd,dyd] = TemporalFitting(displacements,tfit_args);
 
             % Strain
             [X, Y] = meshgrid(1:size(dxd,2), 1:size(dyd,1));
@@ -622,7 +605,7 @@ api = struct(...
     'YLabelStr', 'Strain (\%)',...
     'YAxisTickValues', -30:10:30);
 plot_line_width = 1.5;
-plot_marker_size = 3.0;
+plot_marker_size = 5.0;
 
 % Y labels
 labels = struct('base','Basal','mid','Mid','apex','Apical');
@@ -642,13 +625,13 @@ for view={'base','mid','apex'}
 %     sgtitle(view{1})
 
     nexttile;
-    plot(1:Nfr,100*mean(strain.HARP.(view{1}).segments_RR),'-^','Color',co(1,:),'MarkerSize',plot_marker_size,'LineWidth',plot_line_width)
+    plot(1:Nfr,100*mean(strain.HARP.(view{1}).segments_RR),'-^','Color',co(1,:),'MarkerSize',plot_marker_size,'LineWidth',plot_line_width,'MarkerFaceColor',co(1,:))
     hold on
-    plot(1:Nfr,100*mean(strain.ExactC.(view{1}).segments_RR),'-^','Color',co(2,:),'MarkerSize',plot_marker_size,'LineWidth',plot_line_width)
+    plot(1:Nfr,100*mean(strain.ExactC.(view{1}).segments_RR),'-^','Color',co(2,:),'MarkerSize',plot_marker_size,'LineWidth',plot_line_width,'MarkerFaceColor',co(2,:))
     hold on
-    plot(1:Nfr,100*mean(strain.HARP.(view{1}).segments_CC),'-s','Color',co(1,:),'MarkerSize',plot_marker_size,'LineWidth',plot_line_width)
+    plot(1:Nfr,100*mean(strain.HARP.(view{1}).segments_CC),'-s','Color',co(1,:),'MarkerSize',plot_marker_size,'LineWidth',plot_line_width,'MarkerFaceColor',co(1,:))
     hold on
-    plot(1:Nfr,100*mean(strain.ExactC.(view{1}).segments_CC),'-s','Color',co(2,:),'MarkerSize',plot_marker_size,'LineWidth',plot_line_width)
+    plot(1:Nfr,100*mean(strain.ExactC.(view{1}).segments_CC),'-s','Color',co(2,:),'MarkerSize',plot_marker_size,'LineWidth',plot_line_width,'MarkerFaceColor',co(2,:))
     hold off
     if strcmp(view{1},'apex')
         api.XLabel = true;
@@ -656,51 +639,51 @@ for view={'base','mid','apex'}
     api.YLabelStr = sprintf('%s strain (\\%%)',labels.(view{1}));
     api.YLabel = true;
     nice_plot_3(api);
-    l = legend('RR HARP', 'RR Exact', 'CC HARP', 'CC Exact');
-    l.Location = 'southeast';
-    l.LineWidth = 1.5;
-    l.FontSize = api.LegendFontSize;
-    l.Interpreter = 'latex';
+%     l = legend('RR SP-HR', 'RR Ref.', 'CC SP-HR', 'CC Exact');
+%     l.Location = 'southeast';
+%     l.LineWidth = 1.5;
+%     l.FontSize = api.LegendFontSize;
+%     l.Interpreter = 'latex';
     
     nexttile;
-    plot(1:Nfr,mean(100*strain.SinMod.(view{1}).segments_RR),'-^','Color',co(1,:),'MarkerSize',plot_marker_size,'LineWidth',plot_line_width)
+    plot(1:Nfr,mean(100*strain.SinMod.(view{1}).segments_RR),'-^','Color',co(1,:),'MarkerSize',plot_marker_size,'LineWidth',plot_line_width,'MarkerFaceColor',co(1,:))
     hold on
-    plot(1:Nfr,mean(100*strain.ExactC.(view{1}).segments_RR),'-^','Color',co(2,:),'MarkerSize',plot_marker_size,'LineWidth',plot_line_width)
+    plot(1:Nfr,mean(100*strain.ExactC.(view{1}).segments_RR),'-^','Color',co(2,:),'MarkerSize',plot_marker_size,'LineWidth',plot_line_width,'MarkerFaceColor',co(2,:))
     hold on
-    plot(1:Nfr,mean(100*strain.SinMod.(view{1}).segments_CC),'-s','Color',co(1,:),'MarkerSize',plot_marker_size,'LineWidth',plot_line_width)
+    plot(1:Nfr,mean(100*strain.SinMod.(view{1}).segments_CC),'-s','Color',co(1,:),'MarkerSize',plot_marker_size,'LineWidth',plot_line_width,'MarkerFaceColor',co(1,:))
     hold on
-    plot(1:Nfr,mean(100*strain.ExactC.(view{1}).segments_CC),'-s','Color',co(2,:),'MarkerSize',plot_marker_size,'LineWidth',plot_line_width)
+    plot(1:Nfr,mean(100*strain.ExactC.(view{1}).segments_CC),'-s','Color',co(2,:),'MarkerSize',plot_marker_size,'LineWidth',plot_line_width,'MarkerFaceColor',co(2,:))
     hold off
     if strcmp(view{1},'apex')
         api.XLabel = true;
     end
     api.YLabel = false;
     nice_plot_3(api);
-    l = legend('RR SinMod', 'RR Exact', 'CC SinMod', 'CC Exact');
-    l.Location = 'southeast';
-    l.LineWidth = 1.5;
-    l.FontSize = api.LegendFontSize;
-    l.Interpreter = 'latex';
+%     l = legend('RR SinMod', 'RR Ref.', 'CC SinMod', 'CC Exact');
+%     l.Location = 'southeast';
+%     l.LineWidth = 1.5;
+%     l.FontSize = api.LegendFontSize;
+%     l.Interpreter = 'latex';
 
     nexttile;
-    plot(1:Nfr,100*mean(strain.DENSE.(view{1}).segments_RR),'-^','Color',co(1,:),'MarkerSize',plot_marker_size,'LineWidth',plot_line_width)
+    plot(1:Nfr,100*mean(strain.DENSE.(view{1}).segments_RR),'-^','Color',co(1,:),'MarkerSize',plot_marker_size,'LineWidth',plot_line_width,'MarkerFaceColor',co(1,:))
     hold on
-    plot(1:Nfr,100*mean(strain.ExactD.(view{1}).segments_RR),'-^','Color',co(2,:),'MarkerSize',plot_marker_size,'LineWidth',plot_line_width)
+    plot(1:Nfr,100*mean(strain.ExactD.(view{1}).segments_RR),'-^','Color',co(2,:),'MarkerSize',plot_marker_size,'LineWidth',plot_line_width,'MarkerFaceColor',co(2,:))
     hold on
-    plot(1:Nfr,100*mean(strain.DENSE.(view{1}).segments_CC),'-s','Color',co(1,:),'MarkerSize',plot_marker_size,'LineWidth',plot_line_width)
+    plot(1:Nfr,100*mean(strain.DENSE.(view{1}).segments_CC),'-s','Color',co(1,:),'MarkerSize',plot_marker_size,'LineWidth',plot_line_width,'MarkerFaceColor',co(1,:))
     hold on
-    plot(1:Nfr,100*mean(strain.ExactD.(view{1}).segments_CC),'-s','Color',co(2,:),'MarkerSize',plot_marker_size,'LineWidth',plot_line_width)
+    plot(1:Nfr,100*mean(strain.ExactD.(view{1}).segments_CC),'-s','Color',co(2,:),'MarkerSize',plot_marker_size,'LineWidth',plot_line_width,'MarkerFaceColor',co(2,:))
     hold off
     if strcmp(view{1},'apex')
         api.XLabel = true;
     end
     api.YLabel = false;
     nice_plot_3(api);
-    l = legend('RR DENSE', 'RR Exact', 'CC DENSE', 'CC Exact');
-    l.Location = 'southeast';
-    l.LineWidth = 1.5;
-    l.FontSize = api.LegendFontSize;
-    l.Interpreter = 'latex';
+%     l = legend('RR DENSE', 'RR Ref.', 'CC DENSE', 'CC Exact');
+%     l.Location = 'southeast';
+%     l.LineWidth = 1.5;
+%     l.FontSize = api.LegendFontSize;
+%     l.Interpreter = 'latex';
     
     % Errors
     err_CC = 100*sum(abs(mean(strain.ExactD.(view{1}).segments_CC) - ...
@@ -726,6 +709,27 @@ for view={'base','mid','apex'}
     fprintf('\n  [%s] SinMod errors in the E_CC and E_RR components: (%.1f,%.1f)\n',view{1},err_CC,err_RR)
     
 end
-
-pause
+set(gca,'Position',[0.680000000000000,0.068383404889673,0.272500000000000,0.274705531703442])
+set(gcf,'Position',[1,67,1134,932])
+drawnow
 print('-depsc','-r600','regional_strain')
+
+% Plot legends
+view = 'base';
+figure(2)
+plot(1:Nfr,100*mean(strain.HARP.(view).segments_RR),'-^','Color',co(1,:),'MarkerSize',3*plot_marker_size,'LineWidth',3*plot_line_width)
+hold on
+plot(1:Nfr,100*mean(strain.ExactC.(view).segments_RR),'-^','Color',co(2,:),'MarkerSize',3*plot_marker_size,'LineWidth',3*plot_line_width)
+hold on
+plot(1:Nfr,100*mean(strain.HARP.(view).segments_CC),'-s','Color',co(1,:),'MarkerSize',3*plot_marker_size,'LineWidth',3*plot_line_width)
+hold on
+plot(1:Nfr,100*mean(strain.ExactC.(view).segments_CC),'-s','Color',co(2,:),'MarkerSize',3*plot_marker_size,'LineWidth',3*plot_line_width)
+hold off
+
+l = legend('RR estimated', 'RR reference', 'CC estimated', 'CC reference');
+l.Location = 'northoutside';
+l.LineWidth = 1.5;
+l.FontSize = 3*api.LegendFontSize;
+l.Interpreter = 'latex';
+l.Orientation = 'horizontal';
+drawnow

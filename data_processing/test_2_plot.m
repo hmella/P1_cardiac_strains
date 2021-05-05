@@ -8,8 +8,14 @@ addpath(genpath('/home/hernan/Git/matlab_tools/'))
 path2folder = 'outputs/noisy/';
 
 % Load workspace
-load([path2folder,'workspace.mat'],...
-         'nRMSE','MDE','nRMSE_CC','nRMSE_RR')
+load([path2folder,'workspace.mat'],'mean_SinMod_mag','mean_HARP_mag',...
+    'mean_DENSE_mag','mean_SinMod_ang','mean_HARP_ang','mean_DENSE_ang',...
+    'mean_SinMod_CC','mean_HARP_CC','mean_DENSE_CC','mean_SinMod_RR',...
+    'mean_HARP_RR','mean_DENSE_RR')
+load([path2folder,'workspace.mat'],'std_SinMod_mag','std_HARP_mag',...
+    'std_DENSE_mag','std_SinMod_ang','std_HARP_ang','std_DENSE_ang',...
+    'std_SinMod_CC','std_HARP_CC','std_DENSE_CC','std_SinMod_RR',...
+    'std_HARP_RR','std_DENSE_RR')
 
 % Plot settings
 api = struct(...
@@ -22,346 +28,324 @@ api = struct(...
     'XLabelStr', 'Pixel size (mm)',...
     'YLabelStr', [],...
     'YAxisTickValues', []);
-plot_line_width = 2.0;
-plot_marker_size = 3.5;
+plot_line_width = 3.5;
+plot_marker_size = 8.5;
 
 % Plots visibility
 visibility = 'off';
 
 % Pixel size
-% pxsz = 2*[1 1.5 2 2.5 3];
-pxsz = 2*[3 2.5 2 1.5 1];
-% dr = linspace(-2*0.17,2*0.17,5);
-dr = linspace(-2*0.17,2*0.17,4);
+pxsz = 0.001;
+dr = 0.17;
 
 % Cardiac phases
 cp = [1 1.5 2.0 2.5 3.0];
 labels = [true,false,false,false];
-nlevel = 1:4;
 
 %% ERROR PLOTS
-% Cardiac phase of the plots
-t = 10;
-
-% Outlier marker
-outlier = '';
+% Cardiac phase, resolution and tag spacing of the plots
+t = 8;
+% t = 4;
+r = 5:-1:1;
 
 % Number of different colors and markers
-co = linspecer(5);
+% co = linspecer(5);
 % co = distinguishable_colors(5,'w');
+co = [0.0000 0.4470 0.7410
+      0.8500 0.3250 0.0980
+      0.9290 0.6940 0.1250
+      0.4940 0.1840 0.5560
+      0.4660 0.6740 0.1880
+      0.3010 0.7450 0.9330
+      0.6350 0.0780 0.1840];
+lt = {'s','-','-.'};
 
 %% MAGNITUDE
 
-% HARP
-figure('Visible',visibility)
-for r=1:5
-    for n=nlevel
-        if pxsz(r) == pxsz(r)+dr(n)
-            boxplot(100*squeeze(nRMSE.HARP(:,n,r,t)),'Positions',[pxsz(r)+dr(n)],...
-                    'Labels',{num2str(pxsz(r))},'symbol',outlier); hold on
+% Legends holders
+h1 = zeros([1 4]);
+h2 = zeros([1 2]);
+h3 = zeros([1 4]);
+
+% Plot error for each tag frequency
+for foo=1:2
+
+    figure('Visible',visibility)
+    for f=1:4
+
+        % Plot results
+        if foo==1
+            h1(f) = plot(cp,squeeze(mean_HARP_mag(f,r,t)),lt{2},'Color',co(f,:),...
+                'LineWidth',plot_line_width); hold on        
         else
-            boxplot(100*squeeze(nRMSE.HARP(:,n,r,t)),'Positions',[pxsz(r)+dr(n)],...
-                    'symbol',outlier); hold on
+            h1(f) = plot(cp,squeeze(mean_SinMod_mag(f,r,t)),lt{3},'Color',co(f,:),...
+                'LineWidth',plot_line_width); hold on
         end
-        set(findobj(gca,'type','line'),'linew',plot_line_width)
-    end
-end
-hold off
-
-% Plot formatting
-api.XLabel = false;
-api.YLabel = true;
-api.YLabelStr = 'nRMSE (\%)';
-api.Axis = [1.35 6.65 0 20];
-api.YAxisTickValues = 0:5:100;
-nice_boxplot(api);
-print('-depsc','-r600',[path2folder,'1_MAG'])
-
-% Get current axis and figure
-ref_ax = gca;
-ref_fig = gcf;
-fig_pos = get(ref_fig,'position');
-ax_pos = get(ref_ax,'position');
-set(gcf,'position',[fig_pos(1) fig_pos(2) fig_pos(3) fig_pos(4)])
-dx = 0.1;
-set(gca,'position',[ax_pos(1) ax_pos(2)+dx ax_pos(3) ax_pos(4)-0.6*dx])
-
-
-% SinMod
-figure('Visible',visibility)
-for r=1:5
-    for n=nlevel
-        if pxsz(r) == pxsz(r)+dr(n)
-            boxplot(100*squeeze(nRMSE.SinMod(:,n,r,t)),'Positions',[pxsz(r)+dr(n)],...
-                    'Labels',{num2str(pxsz(r))},'symbol',outlier); hold on
-        else
-            boxplot(100*squeeze(nRMSE.SinMod(:,n,r,t)),'Positions',[pxsz(r)+dr(n)],...
-                    'symbol',outlier); hold on
+        h3(f) = plot(cp,squeeze(mean_DENSE_mag(f,r,t)),lt{1},'Color',co(f,:),...
+                'LineWidth',0.65*plot_line_width,'MarkerFaceColor',co(f,:),...
+                'MarkerSize',plot_marker_size); hold on;
+        
+        % Get current axis and figure
+        if f == 1
+            ref_ax = gca;
+            ref_fig = gcf;
+            fp = get(ref_fig,'position');
+            ap = get(ref_ax,'position');
+            set(gcf,'position',[fp(1) fp(2) 0.7*fp(3) fp(4)])
+            set(gca,'position',[1.5*ap(1) 2*ap(2) 0.85*ap(3) 0.9*ap(4)])
         end
-        set(findobj(gca,'type','line'),'linew',plot_line_width)        
+
+%         % Print results
+%         fprintf('\nnRMSE results\n')
+%         fprintf('--------------------------------------------------------\n')
+%         fprintf('HARP mean nRMSE: [%.1f, %.1f, %.1f, %.1f, %.1f]\n',squeeze(mean_HARP_mag(f,2:end)));
+%         fprintf('HARP std nRMSE:  [%.1f, %.1f, %.1f, %.1f, %.1f]\n',squeeze(std_HARP_mag(f,2:end)))
+%         fprintf('--------------------------------------------------------\n')
+%         fprintf('SinMod mean nRMSE: [%.1f, %.1f, %.1f, %.1f, %.1f]\n',squeeze(mean_SinMod_mag(f,2:end)));
+%         fprintf('SinMod std nRMSE:  [%.1f, %.1f, %.1f, %.1f, %.1f]\n',squeeze(std_SinMod_mag(f,2:end)))
+%         fprintf('--------------------------------------------------------\n')
+%         fprintf('HARP-I mean nRMSE: [%.1f, %.1f, %.1f, %.1f, %.1f]\n',squeeze(mean_DENSE_mag(f,2:end)));
+%         fprintf('HARP-I std nRMSE:  [%.1f, %.1f, %.1f, %.1f, %.1f]\n',squeeze(std_DENSE_mag(f,2:end)))
+
     end
-end
-hold off
-api.YLabel = false;
-nice_boxplot(api);
-print('-depsc','-r600',[path2folder,'2_MAG'])
 
-% Format as the reference figure
-set(gcf,'position',[fig_pos(1) fig_pos(2) fig_pos(3) fig_pos(4)])
-set(gca,'position',[ax_pos(1) ax_pos(2)+dx ax_pos(3) ax_pos(4)-0.6*dx])
+    % Send DENSE plots to the front
+    for i=1:4
+      uistack(h3(i),'top')
+    end    
+    
+    % Dummy plots
+    h2(1) = plot(NaN,NaN,lt{foo+1},'Color','k','LineWidth',plot_line_width); hold on;
+    h2(2) = plot(NaN,NaN,lt{1},'Color','k','LineWidth',plot_line_width); hold off;
 
-% DENSE
-figure('Visible',visibility)
-for r=1:5
-    for n=nlevel
-        if pxsz(r) == pxsz(r)+dr(n)
-            boxplot(100*squeeze(nRMSE.DENSE(:,n,r,t)),'Positions',[pxsz(r)+dr(n)],...
-                    'Labels',{num2str(pxsz(r))},'symbol',outlier); hold on
-        else
-            boxplot(100*squeeze(nRMSE.DENSE(:,n,r,t)),'Positions',[pxsz(r)+dr(n)],...
-                    'symbol',outlier); hold on
-        end
-        set(findobj(gca,'type','line'),'linew',plot_line_width)        
+    % Plot formatting
+    if foo==1
+        api.XLabel = false;
+        api.YLabel = labels(1);
+        api.Legend = {'SP-HR','DENSEanalysis'};
+    else
+        api.XLabel = false;
+        api.YLabel = false;        
+        api.Legend = {'SinMod','DENSEanalysis'};
     end
-end
-hold off
-nice_boxplot(api);
-print('-depsc','-r600',[path2folder,'3_MAG'])
+    api.YLabelStr = 'nRMSE (\%)';
+%     api.Axis = [0.75 3.25 0 15];
+    api.Axis = [0.75 3.25 0 20];
+    api.YAxisTickValues = 0:5:20;
+    api.Legend1 = h1;
+    api.Legend2 = h2;
+    nice_plot_1(api);
 
-% Format as the reference figure
-set(gcf,'position',[fig_pos(1) fig_pos(2) fig_pos(3) fig_pos(4)])
-set(gca,'position',[ax_pos(1) ax_pos(2)+dx ax_pos(3) ax_pos(4)-0.6*dx])
+    % Print results
+    print('-depsc','-r600',[path2folder,sprintf('MAG_%01d',foo)])
+    
+end
 
 
 %% ANGULAR
 
-% HARP
-figure('Visible',visibility)
-for r=1:5
-    for n=nlevel
-        if pxsz(r) == pxsz(r)+dr(n)
-            boxplot(squeeze(MDE.HARP(:,n,r,t)),'Positions',[pxsz(r)+dr(n)],...
-                    'Labels',{num2str(pxsz(r))},'symbol',outlier); hold on
+% Legends holders
+h1 = zeros([1 4]);
+h2 = zeros([1 2]);
+h3 = zeros([1 4]);
+
+% Plot error for each tag frequency
+for foo=1:2
+
+    figure('Visible',visibility)
+    for f=1:4
+
+        % Plot results
+        if foo==1
+            h1(f) = plot(cp,squeeze(mean_HARP_ang(f,r,t)),lt{2},'Color',co(f,:),...
+                'LineWidth',plot_line_width); hold on        
         else
-            boxplot(squeeze(MDE.HARP(:,n,r,t)),'Positions',[pxsz(r)+dr(n)],...
-                    'symbol',outlier); hold on
+            h1(f) = plot(cp,squeeze(mean_SinMod_ang(f,r,t)),lt{3},'Color',co(f,:),...
+                'LineWidth',plot_line_width); hold on
         end
-        set(findobj(gca,'type','line'),'linew',plot_line_width)    
+        h3(f) = plot(cp,squeeze(mean_DENSE_ang(f,r,t)),lt{1},'Color',co(f,:),...
+                'LineWidth',0.65*plot_line_width,'MarkerFaceColor',co(f,:),...
+                'MarkerSize',plot_marker_size); hold on;
+
+        % Get current axis and figure
+        if f == 1
+            ref_ax = gca;
+            ref_fig = gcf;
+            fp = get(ref_fig,'position');
+            ap = get(ref_ax,'position');
+            set(gcf,'position',[fp(1) fp(2) 0.7*fp(3) fp(4)])
+            set(gca,'position',[1.5*ap(1) 2*ap(2) 0.85*ap(3) 0.9*ap(4)])
+        end
+
     end
+
+    % Send DENSE plots to the front
+    for i=1:4
+      uistack(h3(i),'top')
+    end    
+    
+    % Dummy plots
+    h2(1) = plot(NaN,NaN,lt{foo+1},'Color','k','LineWidth',plot_line_width); hold on;
+    h2(2) = plot(NaN,NaN,lt{1},'Color','k','LineWidth',plot_line_width); hold off;
+
+    % Plot formatting
+    if foo==1
+        api.XLabel = false;
+        api.YLabel = labels(1);
+        api.Legend = {'SP-HR','DENSEanalysis'};
+    else
+        api.XLabel = false;
+        api.YLabel = false;        
+        api.Legend = {'SinMod','DENSEanalysis'};
+    end
+    api.YLabelStr = 'DE ($^o$)';
+    api.Axis = [0.75 3.25 0 15];
+    api.YAxisTickValues = 0:5:25;
+    api.Legend1 = h1;
+    api.Legend2 = h2;
+    nice_plot_1(api);
+
+    % Print results
+    print('-depsc','-r600',[path2folder,sprintf('ANG_%01d',foo)])
+    
 end
-hold off
-
-% Plot formatting
-api.XLabel = true;
-api.YLabel = true;
-api.YLabelStr = 'DE ($^o$)';
-api.Axis = [1.35 6.65 0 25];
-api.YAxisTickValues = 0:5:100;
-nice_boxplot(api);
-print('-depsc','-r600',[path2folder,'1_DE'])
-
-% Format as the reference figure
-set(gcf,'position',[fig_pos(1) fig_pos(2) fig_pos(3) fig_pos(4)])
-set(gca,'position',[ax_pos(1) ax_pos(2)+dx ax_pos(3) ax_pos(4)-0.6*dx])
 
 
-% SinMod
-figure('Visible',visibility)
-for r=1:5
-    for n=nlevel
-        if pxsz(r) == pxsz(r)+dr(n)
-            boxplot(squeeze(MDE.SinMod(:,n,r,t)),'Positions',[pxsz(r)+dr(n)],...
-                    'Labels',{num2str(pxsz(r))},'symbol',outlier); hold on
+%% CIRCUMFERENTIAL
+
+% Legends holders
+h1 = zeros([1 4]);
+h2 = zeros([1 2]);
+h3 = zeros([1 4]);
+
+% Plot error for each tag frequency
+for foo=1:2
+
+    figure('Visible',visibility)
+    for f=1:4
+
+        % Plot results
+        if foo==1
+            h1(f) = plot(cp,squeeze(mean_HARP_CC(f,r,t)),lt{2},'Color',co(f,:),...
+                'LineWidth',plot_line_width); hold on        
         else
-            boxplot(squeeze(MDE.SinMod(:,n,r,t)),'Positions',[pxsz(r)+dr(n)],...
-                    'symbol',outlier); hold on
+            h1(f) = plot(cp,squeeze(mean_SinMod_CC(f,r,t)),lt{3},'Color',co(f,:),...
+                'LineWidth',plot_line_width); hold on
         end
-        set(findobj(gca,'type','line'),'linew',plot_line_width)    
+        h3(f) = plot(cp,squeeze(mean_DENSE_CC(f,r,t)),lt{1},'Color',co(f,:),...
+                'LineWidth',0.65*plot_line_width,'MarkerFaceColor',co(f,:),...
+                'MarkerSize',plot_marker_size); hold on;
+        
+        % Get current axis and figure
+        if f == 1
+            ref_ax = gca;
+            ref_fig = gcf;
+            fp = get(ref_fig,'position');
+            ap = get(ref_ax,'position');
+            set(gcf,'position',[fp(1) fp(2) 0.7*fp(3) fp(4)])
+            set(gca,'position',[1.5*ap(1) 2*ap(2) 0.85*ap(3) 0.9*ap(4)])
+        end
+
     end
+
+    % Send DENSE plots to the front
+    for i=1:4
+      uistack(h3(i),'top')
+    end
+    
+    % Dummy plots
+    h2(1) = plot(NaN,NaN,lt{foo+1},'Color','k','LineWidth',plot_line_width); hold on;
+    h2(2) = plot(NaN,NaN,lt{1},'Color','k','LineWidth',plot_line_width); hold off;
+
+    % Plot formatting
+    if foo==1
+        api.XLabel = true;
+        api.YLabel = true;
+        api.Legend = {'SP-HR','DENSEanalysis'};
+    else
+        api.XLabel = true;
+        api.YLabel = false;        
+        api.Legend = {'SinMod','DENSEanalysis'};
+    end
+    api.YLabelStr = 'nRMSE CC (\%)';
+    api.Axis = [0.75 3.25 0 50];
+    api.YAxisTickValues = 0:10:50;
+    api.Legend1 = h1;
+    api.Legend2 = h2;
+    nice_plot_1(api);
+
+    % Print results
+    print('-depsc','-r600',[path2folder,sprintf('CC_%01d',foo)])
+
 end
-hold off
-api.YLabel = false;
-nice_boxplot(api);
-print('-depsc','-r600',[path2folder,'2_DE'])
 
-% Format as the reference figure
-set(gcf,'position',[fig_pos(1) fig_pos(2) fig_pos(3) fig_pos(4)])
-set(gca,'position',[ax_pos(1) ax_pos(2)+dx ax_pos(3) ax_pos(4)-0.6*dx])
 
-% DENSE
-figure('Visible',visibility)
-for r=1:5
-    for n=nlevel
-        if pxsz(r) == pxsz(r)+dr(n)
-            boxplot(squeeze(MDE.DENSE(:,n,r,t)),'Positions',[pxsz(r)+dr(n)],...
-                    'Labels',{num2str(pxsz(r))},'symbol',outlier); hold on
+%% RADIAL
+
+% Legends holders
+h1 = zeros([1 4]);
+h2 = zeros([1 2]);
+h3 = zeros([1 4]);
+
+% Plot error for each tag frequency
+for foo=1:2
+
+    figure('Visible',visibility)
+    for f=1:4
+
+        % Plot results
+        if foo==1
+            h1(f) = plot(cp,squeeze(mean_HARP_RR(f,r,t)),lt{2},'Color',co(f,:),...
+                'LineWidth',plot_line_width); hold on        
         else
-            boxplot(squeeze(MDE.DENSE(:,n,r,t)),'Positions',[pxsz(r)+dr(n)],...
-                    'symbol',outlier); hold on
+            h1(f) = plot(cp,squeeze(mean_SinMod_RR(f,r,t)),lt{3},'Color',co(f,:),...
+                'LineWidth',plot_line_width); hold on
         end
-        set(findobj(gca,'type','line'),'linew',plot_line_width)    
-    end
-end
-hold off
-nice_boxplot(api);
-print('-depsc','-r600',[path2folder,'3_DE'])
-
-% Format as the reference figure
-set(gcf,'position',[fig_pos(1) fig_pos(2) fig_pos(3) fig_pos(4)])
-set(gca,'position',[ax_pos(1) ax_pos(2)+dx ax_pos(3) ax_pos(4)-0.6*dx])
-
-
-%% CC
-
-% HARP
-figure('Visible',visibility)
-for r=1:5
-    for n=nlevel
-        if pxsz(r) == pxsz(r)+dr(n)
-            boxplot(squeeze(100*nRMSE_CC.HARP(:,n,r,t)),'Positions',[pxsz(r)+dr(n)],...
-                    'Labels',{num2str(pxsz(r))},'symbol',outlier); hold on
-        else
-            boxplot(squeeze(100*nRMSE_CC.HARP(:,n,r,t)),'Positions',[pxsz(r)+dr(n)],...
-                    'symbol',outlier); hold on
+        h3(f) = plot(cp,squeeze(mean_DENSE_RR(f,r,t)),lt{1},'Color',co(f,:),...
+                'LineWidth',0.65*plot_line_width,'MarkerFaceColor',co(f,:),...
+                'MarkerSize',plot_marker_size); hold on;
+        
+        % Get current axis and figure
+        if f == 1
+            ref_ax = gca;
+            ref_fig = gcf;
+            fp = get(ref_fig,'position');
+            ap = get(ref_ax,'position');
+            set(gcf,'position',[fp(1) fp(2) 0.7*fp(3) fp(4)])
+            set(gca,'position',[1.5*ap(1) 2*ap(2) 0.85*ap(3) 0.9*ap(4)])
         end
-        set(findobj(gca,'type','line'),'linew',plot_line_width)    
+
     end
-end
-hold off
-
-% Plot formatting
-api.XLabel = false;
-api.YLabel = true;
-api.YLabelStr = 'nRMSE CC (\%)';
-api.Axis = [1.35 6.65 0 35];
-api.YAxisTickValues = 0:10:100;
-nice_boxplot(api);
-print('-depsc','-r600',[path2folder,'1_CC'])
-
-% Format as the reference figure
-set(gcf,'position',[fig_pos(1) fig_pos(2) fig_pos(3) fig_pos(4)])
-set(gca,'position',[ax_pos(1) ax_pos(2)+dx ax_pos(3) ax_pos(4)-0.6*dx])
-
-
-% SinMod
-figure('Visible',visibility)
-for r=1:5
-    for n=nlevel
-        if pxsz(r) == pxsz(r)+dr(n)
-            boxplot(squeeze(100*nRMSE_CC.SinMod(:,n,r,t)),'Positions',[pxsz(r)+dr(n)],...
-                    'Labels',{num2str(pxsz(r))},'symbol',outlier); hold on
-        else
-            boxplot(squeeze(100*nRMSE_CC.SinMod(:,n,r,t)),'Positions',[pxsz(r)+dr(n)],...
-                    'symbol',outlier); hold on
-        end
-        set(findobj(gca,'type','line'),'linew',plot_line_width)        
+    
+    % Send DENSE plots to the front
+    for i=1:4
+      uistack(h3(i),'top')
     end
-end
-hold off
-api.YLabel = false;
-nice_boxplot(api);
-print('-depsc','-r600',[path2folder,'2_CC'])
 
-% Format as the reference figure
-set(gcf,'position',[fig_pos(1) fig_pos(2) fig_pos(3) fig_pos(4)])
-set(gca,'position',[ax_pos(1) ax_pos(2)+dx ax_pos(3) ax_pos(4)-0.6*dx])
+    % Dummy plots
+    h2(1) = plot(NaN,NaN,lt{foo+1},'Color','k','LineWidth',plot_line_width); hold on;
+    h2(2) = plot(NaN,NaN,lt{1},'Color','k','LineWidth',plot_line_width); hold off;
 
-% DENSE
-figure('Visible',visibility)
-for r=1:5
-    for n=nlevel
-        if pxsz(r) == pxsz(r)+dr(n)
-            boxplot(squeeze(100*nRMSE_CC.DENSE(:,n,r,t)),'Positions',[pxsz(r)+dr(n)],...
-                    'Labels',{num2str(pxsz(r))},'symbol',outlier); hold on
-        else
-            boxplot(squeeze(100*nRMSE_CC.DENSE(:,n,r,t)),'Positions',[pxsz(r)+dr(n)],...
-                    'symbol',outlier); hold on
-        end
-        set(findobj(gca,'type','line'),'linew',plot_line_width)        
+    % Plot formatting
+    if foo==1
+        api.XLabel = true;
+        api.YLabel = true;
+        api.Legend = {'SP-HR','DENSEanalysis'};
+    else
+        api.XLabel = true;
+        api.YLabel = false;        
+        api.Legend = {'SinMod','DENSEanalysis'};
     end
+    api.YLabelStr = 'nRMSE RR (\%)';
+    api.Axis = [0.75 3.25 0 65];
+    api.YAxisTickValues = 0:20:90;
+    api.Legend1 = h1;
+    api.Legend2 = h2;
+    nice_plot_1(api);
+
+    % Print results
+    print('-depsc','-r600',[path2folder,sprintf('RR_%01d',foo)])
+
 end
-hold off
-nice_boxplot(api);
-print('-depsc','-r600',[path2folder,'3_CC'])
 
-% Format as the reference figure
-set(gcf,'position',[fig_pos(1) fig_pos(2) fig_pos(3) fig_pos(4)])
-set(gca,'position',[ax_pos(1) ax_pos(2)+dx ax_pos(3) ax_pos(4)-0.6*dx])
-
-
-%% RR
-
-% HARP
-figure('Visible',visibility)
-for r=1:5
-    for n=nlevel
-        if pxsz(r) == pxsz(r)+dr(n)
-            boxplot(squeeze(100*nRMSE_RR.HARP(:,n,r,t)),'Positions',[pxsz(r)+dr(n)],...
-                    'Labels',{num2str(pxsz(r))},'symbol',outlier); hold on
-        else
-            boxplot(squeeze(100*nRMSE_RR.HARP(:,n,r,t)),'Positions',[pxsz(r)+dr(n)],...
-                    'symbol',outlier); hold on
-        end
-        set(findobj(gca,'type','line'),'linew',plot_line_width)        
-    end
-end
-hold off
-
-% Plot formatting
-api.XLabel = true;
-api.YLabel = true;
-api.YLabelStr = 'nRMSE RR (\%)';
-api.Axis = [1.35 6.65 0 70];
-api.YAxisTickValues = 0:10:150;
-nice_boxplot(api);
-print('-depsc','-r600',[path2folder,'1_RR'])
-
-% Format as the reference figure
-set(gcf,'position',[fig_pos(1) fig_pos(2) fig_pos(3) fig_pos(4)])
-set(gca,'position',[ax_pos(1) ax_pos(2)+dx ax_pos(3) ax_pos(4)-0.6*dx])
-
-
-% SinMod
-figure('Visible',visibility)
-for r=1:5
-    for n=nlevel
-        if pxsz(r) == pxsz(r)+dr(n)
-            boxplot(squeeze(100*nRMSE_RR.SinMod(:,n,r,t)),'Positions',[pxsz(r)+dr(n)],...
-                    'Labels',{num2str(pxsz(r))},'symbol',outlier); hold on
-        else
-            boxplot(squeeze(100*nRMSE_RR.SinMod(:,n,r,t)),'Positions',[pxsz(r)+dr(n)],...
-                    'symbol',outlier); hold on
-        end
-        set(findobj(gca,'type','line'),'linew',plot_line_width)        
-    end
-end
-hold off
-api.YLabel = false;
-nice_boxplot(api);
-print('-depsc','-r600',[path2folder,'2_RR'])
-
-% Format as the reference figure
-set(gcf,'position',[fig_pos(1) fig_pos(2) fig_pos(3) fig_pos(4)])
-set(gca,'position',[ax_pos(1) ax_pos(2)+dx ax_pos(3) ax_pos(4)-0.6*dx])
-
-% DENSE
-figure('Visible',visibility)
-for r=1:5
-    for n=nlevel
-        if pxsz(r) == pxsz(r)+dr(n)
-            boxplot(squeeze(100*nRMSE_RR.DENSE(:,n,r,t)),'Positions',[pxsz(r)+dr(n)],...
-                    'Labels',{num2str(pxsz(r))},'symbol',outlier); hold on
-        else
-            boxplot(squeeze(100*nRMSE_RR.DENSE(:,n,r,t)),'Positions',[pxsz(r)+dr(n)],...
-                    'symbol',outlier); hold on
-        end
-        set(findobj(gca,'type','line'),'linew',plot_line_width)        
-    end
-end
-hold off
-nice_boxplot(api);
-print('-depsc','-r600',[path2folder,'3_RR'])
-
-% Format as the reference figure
-set(gcf,'position',[fig_pos(1) fig_pos(2) fig_pos(3) fig_pos(4)])
-set(gca,'position',[ax_pos(1) ax_pos(2)+dx ax_pos(3) ax_pos(4)-0.6*dx])
+% clear all

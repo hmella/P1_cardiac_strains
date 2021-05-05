@@ -74,7 +74,7 @@ function nice_plot(varargin)
     axis(api.Axis);
 
     % Legends
-    h1 = api.Legend1;
+%     h1 = api.Legend1;
     h2 = api.Legend2;
 %     l1 = legend(h1,sprintf('s=%.0f mm',8),...
 %                    sprintf('s=%.0f mm',10),...
@@ -86,7 +86,7 @@ function nice_plot(varargin)
 %     l1.FontSize = 0.5*api.LegendFontSize;
 %     l1.Interpreter = 'LaTeX';
 
-    l2 = legend(ax,h2,'HARP','SinMod','DENSEanalysis');
+    l2 = legend(ax,h2,'SP-HR','SinMod','DENSEanalysis');
     l2.Location = 'northwest';
     l2.LineWidth = 1.5;
     l2.FontSize = api.LegendFontSize;

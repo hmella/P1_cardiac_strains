@@ -1,4 +1,4 @@
-function nice_plot(varargin)
+function nice_plot_1(varargin)
   %NICE_PLOT_MAG Summary of this function goes here
 %   Detailed explanation goes here
 

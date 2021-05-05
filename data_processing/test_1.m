@@ -35,11 +35,6 @@ DENSE_ERROR = true;
 fr  = 1:20;
 Nfr = numel(fr);
 
-% Temporal fitting parameters
-tfit_args = struct('Mask',           [],...
-                   'Frames',         1:Nfr,...
-                   'TemporalOrder',  7,...
-                   'Show',           true);
 
 %% FILTERS SPECS (for image processing)
 % Filter specs
@@ -47,6 +42,7 @@ KspaceFilter = 'Transmission';
 BTW_cutoff = 1;
 BTW_order  = [];
 KspaceFollowing = false;
+
 
 %% IMAGING PARAMETERS
 % Resolutions
@@ -58,6 +54,23 @@ pxsz = 0.1./resolutions;
 tag_spac = [0.0080, 0.0100, 0.0120, 0.0140, 0.0160]; % [m]
 ke_spamm = 2*pi./tag_spac;                           % [rad/m]
 ke_dense = 0.12*1000;                                %
+
+
+%% FIELD INHOMOGENEITY
+add_inhomogeneity = true;
+phi = @(X,Y) (X+Y)/FOV(1);
+
+% Modified output folders
+if add_inhomogeneity
+    outputs = {'outputs/noise_free/Exact/',...
+               'outputs/noise_free/HARP_in/',...
+               'outputs/noise_free/SinMod_in/',...
+               'outputs/noise_free/DENSE/',};
+    for i=1:numel(outputs)
+       mkdir(outputs{i});
+    end
+end
+
 
 %% MAIN CODE
 % Data to be analyzed
@@ -103,7 +116,7 @@ if RUN_EXACT
                 IPath = [input_folder,'noise_free_images/',filename];
                 MPath = [input_folder,'masks/',filename];
                 [I,M] = P1_read_EXACT(IPath,MPath,0);
-
+                
                 % Debug
                 fprintf('\n [EXACT] Processing data %d, resolution %d',d,r)
 
@@ -132,7 +145,7 @@ if RUN_EXACT
                     'dy', dye,...
                     'Origin', [],...
                     'Orientation', []);
-                st = mypixelstrain(options);
+                st = pixelstrain(options);
                 RR_EXACT = NaN([Isz(1) Isz(2) Nfr]);
                 CC_EXACT = NaN([Isz(1) Isz(2) Nfr]);
                 RR_EXACT(repmat(st.maskimage(:,:,1),[1 1 Nfr])) = st.RR(:);
@@ -172,45 +185,73 @@ if RUN_HARP
                 IPath = [input_folder,'noise_free_images/',filename];
                 MPath = [input_folder,'masks/',filename];
                 [I,M] = P1_read_CSPAMM(IPath,MPath,0);
+                I = permute(I,[2 1 3 4]);
+                M = permute(M,[2 1 3 4]);
+                
+                % Image size
+                Isz = size(I);                
+                
+                % Add field inhomogeneity
+                if add_inhomogeneity
+                    [X,Y] = meshgrid(pxsz(r)*(1:Isz(2)),pxsz(r)*(1:Isz(1)));
+                    X = X - pxsz(r)*(Isz(2)+1)/2;
+                    Y = Y - pxsz(r)*(Isz(1)+1)/2;
+                    phi_in = phi(X,Y);
+                    
+                    I = I.*exp(1j*phi_in);
+                    
+%                     figure(1)
+%                     subplot 131
+%                     imagesc(real(I(:,:,1,1)))
+%                     subplot 132
+%                     imagesc(real(I_in(:,:,1,1)))                    
+%                     subplot 133
+%                     imagesc(wrap(phi_in))
+%                     colormap gray
+%                     pause
+                    
+                end
+
+                % Filtered image
+                ke_norm = ke.*[pxsz(r) pxsz(r)];
+                H = HARPFilter(struct('Image',I,'CentralFreq',ke_norm,'Direction',deg2rad([0 90]),...
+                                    'FilterType','Butterworth','Butterworth_cuttoff',ke(1)/100,'Butterworth_order',5));
+                If = H.filter(I);
+                
+%                 figure(1),
+%                 subplot 121
+%                 imagesc(abs(itok(I(:,:,1,1))))
+%                 subplot 122
+%                 imagesc(abs(itok(If(:,:,1,1))))
+%                 pause
                 
                 % Debug
                 fprintf('\n [HARP] Processing data %d, tag spacing %d, resolution %d',d,f,r)
-
-                % Image size
-                Isz = size(I);
+                
+                % ROI
+                [X,Y] = meshgrid(1:Isz(2),1:Isz(1));
+                m = M(:,:,1);
+                ROI = [min(Y(m))-1, max(Y(m))+1,...
+                       min(X(m))-1, max(X(m))+1];                
                 
                 % HARP displacements
                 args = struct(...
-                    'Mask',             M,...
-                    'EncFreq',          ke,...
-                    'FOV',              Isz(1:2).*pxsz(r),...
-                    'PixelSize',        [1 1].*pxsz(r),...
-                    'Frames',           fr,...
-                    'tol',              1e-2,...
-                    'maxiter',          30,...
-                    'GradientEval',     5,...
-                    'SearchWindow',     [0,0],...
-                    'PhaseWindow',      [2,2],...
-                    'Show',             false,...
-                    'ShowConvergence',  false,...
-                    'Seed',             'auto',...
-                    'theta',            [0 pi/2],...
-                    'Connectivity',     8,...
-                    'KspaceFilter',     KspaceFilter,...
-                    'BTW_cutoff',       BTW_cutoff,...
-                    'BTW_order',        BTW_order,...
-                    'KspaceFollowing',  KspaceFollowing);
-                [dxh, dyh] = HARPTrackingOsman(I, args);
-
-                % Prepare displacements
-                displacements = permute(cat(4,dxh,dyh),[1 2 4 3]);
-
-                % Temporal fitting
-                tfit_args.Mask = M(:,:,1);
-                [dxh,dyh] = TemporalFitting(displacements,tfit_args);
+                        'Mask',             M,...
+                        'EncFreq',          [pxsz(r) pxsz(r)].*ke,...
+                        'FOV',              Isz(1:2),...
+                        'PixelSize',        [1 1],....
+                        'Frames',           1:Nfr,...
+                        'Show',             false,...
+                        'TagSpacing',       2*pi/ke(1),...
+                        'SeedPoint',        [],...
+                        'ROI',              ROI,...
+                        'TemporalFitting',  false,...
+                        'TemporalFittingOrder', 10);
+                harp = HARP_SPHR(If, args);
+                dxh = squeeze(harp.RawMotion(:,:,1,:));
+                dyh = squeeze(harp.RawMotion(:,:,2,:));
 
                 % HARP strain
-                [X, Y] = meshgrid(1:size(ux_HARP,2), 1:size(ux_HARP,1));
                 options = struct(...
                     'X', X,...
                     'Y', Y,...
@@ -221,18 +262,34 @@ if RUN_HARP
                     'Origin', [],...
                     'checknans',  false,...
                     'Orientation', []);
-                st = mypixelstrain(options);
+                st = pixelstrain(options);
                 RR_HARP = NaN([Isz(1) Isz(2) Nfr]);
                 CC_HARP = NaN([Isz(1) Isz(2) Nfr]);
                 RR_HARP(repmat(st.maskimage(:,:,1),[1 1 Nfr])) = st.RR(:);
                 CC_HARP(repmat(st.maskimage(:,:,1),[1 1 Nfr])) = st.CC(:);
 
-                % figure(1)
-                % subplot 121
-                % imagesc(CC_HARP(:,:,8)); colorbar
-                % subplot 122
-                % imagesc(RR_HARP(:,:,8)); colorbar
-                % pause(0.1)
+%                 filename_exact = sprintf('EI_%03d_%02d_%02d.mat',d-1,0,r-1);
+%                 load([outputs{1},filename_exact])
+%                 figure(1)
+%                 subplot 221
+%                 imagesc(st.maskimage,'AlphaData',st.maskimage); hold on;
+%                 q = quiver(X,Y,dxe(:,:,8),dye(:,:,8)); hold off
+%                 q.AutoScale = 'off';
+%                 subplot 222
+%                 imagesc(st.maskimage,'AlphaData',st.maskimage); hold on;
+%                 q = quiver(X,Y,dxh(:,:,8),dyh(:,:,8)); hold off
+%                 q.AutoScale = 'off';
+%                 subplot 223
+%                 imagesc(CC_EXACT(:,:,8)); colorbar; caxis([-0.35 -0.1])
+%                 subplot 224
+%                 imagesc(CC_HARP(:,:,8)); colorbar; caxis([-0.35 -0.1])
+                
+%                 figure(1)
+%                 subplot 121
+%                 imagesc(CC_HARP(:,:,8)); colorbar
+%                 subplot 122
+%                 imagesc(RR_HARP(:,:,8)); colorbar
+%                 pause(0.1)
 
                 % Write displacement and strain
                 mask_harp = st.maskimage(:,:,1);
@@ -261,45 +318,64 @@ if RUN_SinMod
                 IPath = [input_folder,'noise_free_images/',filename];
                 MPath = [input_folder,'masks/',mask_filename];
                 [I,M] = P1_read_CSPAMM(IPath,MPath,0);
+                I = permute(I,[2 1 3 4]);
+                M = permute(M,[2 1 3 4]);
 
+                % Image size
+                Isz = size(I);                
+                
+                % Add field inhomogeneity
+                if add_inhomogeneity
+                    [X,Y] = meshgrid(pxsz(r)*(1:Isz(2)),pxsz(r)*(1:Isz(1)));
+                    X = X - pxsz(r)*(Isz(2)+1)/2;
+                    Y = Y - pxsz(r)*(Isz(1)+1)/2;
+                    phi_in = phi(X,Y);
+
+                    I = I.*exp(1j*phi_in);
+                    
+%                     figure(1)
+%                     subplot 131
+%                     imagesc(real(I(:,:,1,1)))
+%                     subplot 132
+%                     imagesc(real(I_in(:,:,1,1)))                    
+%                     subplot 133
+%                     imagesc(wrap(phi_in))
+%                     colormap gray
+%                     pause
+                    
+                end
+
+                % Filtered image
+                ke_norm = ke.*[pxsz(r) pxsz(r)];
+                H = HARPFilter(struct('Image',I,'CentralFreq',ke_norm,'Direction',deg2rad([0 90]),...
+                                    'FilterType','Butterworth','Butterworth_cuttoff',ke(1)/100,'Butterworth_order',5));
+                If = H.filter(I);
+                
                 % Debug
                 fprintf('\n [SinMod] Processing data %d, tag spacing %d, resolution %d',d,f,r)
 
                 % Image size
-                Isz = size(I);
+                Isz = size(If);
 
                 % SinMod displacements
                 options = struct(...
                     'Mask',              M,...
-                    'EncFreq',           ke*pxsz(r),...
+                    'EncFreq',           ke.*[pxsz(r) pxsz(r)],...
                     'FOV',               Isz(1:2),...
                     'PixelSize',         [1 1],...
-                    'SearchWindow',      [2,2],...
+                    'SearchWindow',      [0,0],...
                     'Frames',            1:Nfr,...
-                    'show',              false,...
-                    'theta',             deg2rad([0 90]),...
-                    'UnwrapPhase',       false,...
-                    'Seed',              'auto',...
-                    'Connectivity',      8,...
+                    'Show',              false,...
                     'CheckQuality',      true,...
                     'QualityPower',      8,...
                     'QualityFilterSize', 15,...
-                    'Window',            false,...
-                    'Frame2Frame',       true,...
-                    'KspaceFilter',      KspaceFilter,...
-                    'BTW_cutoff',        BTW_cutoff,...
-                    'BTW_order',         BTW_order,...
-                    'KspaceFollowing',   KspaceFollowing);
-                [us] = get_SinMod_motion(I, options);
-                dxs = squeeze(us(:,:,1,:));
-                dys = squeeze(us(:,:,2,:));
-
-                % Prepare displacements
-                displacements = permute(cat(4,dxs,dys),[1 2 4 3]);
-
-                % Temporal fitting
-                tfit_args.Mask = M(:,:,1);
-                [dxs,dys] = TemporalFitting(displacements,tfit_args);
+                    'Filter',            H,...
+                    'FrameToFrame',      true,...
+                    'TemporalFitting',   false,...
+                    'TemporalFittingOrder', 10);
+                sinmod = SinMod(If, options);
+                dxs = squeeze(sinmod.RawMotion(:,:,1,:));
+                dys = squeeze(sinmod.RawMotion(:,:,2,:));
 
                 % SinMod Strain
                 [X, Y] = meshgrid(1:size(dxs,2), 1:size(dys,1));
@@ -312,15 +388,31 @@ if RUN_SinMod
                     'dy', dys,...
                     'Origin', [],...
                     'Orientation', []);
-                st = mypixelstrain(options);
+                st = pixelstrain(options);
                 RR_SinMod = NaN([Isz(1) Isz(2) Nfr]);
                 CC_SinMod = NaN([Isz(1) Isz(2) Nfr]);
                 RR_SinMod(repmat(st.maskimage(:,:,1),[1 1 Nfr])) = st.RR(:);
                 CC_SinMod(repmat(st.maskimage(:,:,1),[1 1 Nfr])) = st.CC(:);
 
-                % figure(1)
-                % imagesc(CC_SinMod(:,:,8),'AlphaData',st.maskimage)
-                % colormap jet
+%                 filename_exact = sprintf('EI_%03d_%02d_%02d.mat',d-1,0,r-1);
+%                 load([outputs{1},filename_exact])
+%                 figure(1)
+%                 subplot 221
+%                 imagesc(st.maskimage,'AlphaData',st.maskimage); hold on;
+%                 q = quiver(X,Y,dxe(:,:,8),dye(:,:,8)); hold off
+%                 q.AutoScale = 'off';
+%                 subplot 222
+%                 imagesc(st.maskimage,'AlphaData',st.maskimage); hold on;
+%                 q = quiver(X,Y,dxs(:,:,8),dys(:,:,8)); hold off
+%                 q.AutoScale = 'off';
+%                 subplot 223
+%                 imagesc(CC_EXACT(:,:,8)); colorbar; caxis([-0.35 -0.1])
+%                 subplot 224
+%                 imagesc(CC_SinMod(:,:,8)); colorbar; caxis([-0.35 -0.1])                
+                
+%                 figure(1)
+%                 imagesc(CC_SinMod(:,:,8),'AlphaData',st.maskimage)
+%                 colormap jet
 
                 % Write displacement and strain
                 mask_sinmod = st.maskimage(:,:,1);
@@ -342,49 +434,47 @@ if RUN_DENSE
                 IPath = [input_folder,'noise_free_images/',filename];
                 MPath = [input_folder,'masks/',filename];
                 [I,M] = P1_read_CSPAMM(IPath,MPath,0);
-
+                I = permute(I,[2 1 3 4]);
+                M = permute(M,[2 1 3 4]);                
+                
                 % Image size
-                Isz = size(I);
+                Isz = size(I,[1 2]);
 
                 % Image filtering
-                h = ButterworthFilter(Isz(1:2),Isz(1:2)/2,10,10);                
-                I = ktoi(h.*itok(I));
-
+                ke_norm = ke.*[pxsz(r) pxsz(r)];
+                H = HARPFilter(struct('Image',I,'CentralFreq',[0 0],'Direction',deg2rad([90 0]),...
+                                    'FilterType','Butterworth','Butterworth_cuttoff',10,...
+                                    'Butterworth_order',10));
+                If = H.filter(I);
+                              
                 % Displacement
-                u = angle(I);
+                u = -angle(If);
                 
                 % Debug
                 fprintf('\n [DENSE] Estimating strain from DENSE data %d, resolution %d',d,r)
 
                 % Displacement
                 args = struct(...
-                    'PixelSpacing',         [pxsz(r) pxsz(r)],...
-                    'EncFreq',              [ke_dense, ke_dense, nan],...
+                    'PixelSpacing',         [1 1],...
+                    'EncFreq',              [pxsz(r) pxsz(r) 1].*[ke_dense, ke_dense, nan],...
                     'Mask',                 M,...
                     'FramesForAnalysis',    [1 Nfr],...
                     'ResampleMethod',       'gridfit',...
                     'SpatialSmoothing',     0.5,...
                     'SeedFrame',            1,...
-                    'TemporalOrder',        7,...
+                    'TemporalOrder',        -1,...
                     'Seed',                 'auto',...
                     'OptionsPanel',         false,...
-                    'UnwrapConnectivity',   8);
+                    'UnwrapConnectivity',   4);
                 try
                     [dxd, dyd] = GetDenseDisplacement(u, args);
                 catch
                     args.OptionsPanel = true;
                     [dxd, dyd] = GetDenseDisplacement(u, args);
                 end
-
-                % Prepare displacements
-                displacements = permute(cat(4,dxd,dyd),[1 2 4 3]); 
-                
-                % Temporal fitting
-                tfit_args.Mask = M(:,:,1);
-                [dxd,dyd] = TemporalFitting(displacements,tfit_args);
                 
                 % Strain
-                [X, Y] = meshgrid(1:size(dxd,2), 1:size(dyd,1));
+                [X, Y] = meshgrid(1:Isz(2), 1:Isz(1));
                 options = struct(...
                     'X', X,...
                     'Y', Y,...
@@ -400,33 +490,33 @@ if RUN_DENSE
                 RR_DENSE(repmat(st.maskimage,[1 1 Nfr])) = st.RR(:);
                 CC_DENSE(repmat(st.maskimage,[1 1 Nfr])) = st.CC(:);
 
-                filename_exact = sprintf('EI_%03d_%02d_%02d.mat',d-1,f-1,r-1);
-                load([outputs{1},filename_exact])
-                figure(1)
-                subplot 221
-                imagesc(st.maskimage,'AlphaData',st.maskimage); hold on;
-                q = quiver(X,Y,dxe(:,:,8),dye(:,:,8)); hold off
-                q.AutoScale = 'off';
-                subplot 222
-                imagesc(st.maskimage,'AlphaData',st.maskimage); hold on;
-                q = quiver(X,Y,dxd(:,:,8),dyd(:,:,8)); hold off
-                q.AutoScale = 'off';
-                subplot 223
-                imagesc(CC_EXACT(:,:,8)); colorbar
-                subplot 224
-                imagesc(CC_DENSE(:,:,8)); colorbar
-                pause
+%                 filename_exact = sprintf('EI_%03d_%02d_%02d.mat',d-1,f-1,r-1);
+%                 load([outputs{1},filename_exact])
+%                 figure(1)
+%                 subplot 221
+%                 imagesc(st.maskimage,'AlphaData',st.maskimage); hold on;
+%                 q = quiver(X,Y,dxe(:,:,8),dye(:,:,8)); hold off
+%                 q.AutoScale = 'off';
+%                 subplot 222
+%                 imagesc(st.maskimage,'AlphaData',st.maskimage); hold on;
+%                 q = quiver(X,Y,dxd(:,:,8),dyd(:,:,8)); hold off
+%                 q.AutoScale = 'off';
+%                 subplot 223
+%                 imagesc(CC_EXACT(:,:,8)); colorbar
+%                 subplot 224
+%                 imagesc(CC_DENSE(:,:,8)); colorbar
+%                 pause
                 
-                % figure(1)
-                % subplot 121
-                % imagesc(CC_DENSE(:,:,8),'AlphaData',st.maskimage)
-                % subplot 122
-                % imagesc(RR_DENSE(:,:,8),'AlphaData',st.maskimage)
-                % pause
+%                 figure(1)
+%                 subplot 121
+%                 imagesc(CC_DENSE(:,:,8),'AlphaData',st.maskimage); colorbar
+%                 subplot 122
+%                 imagesc(RR_DENSE(:,:,8),'AlphaData',st.maskimage); colorbar
+%                 pause
                 
-%                 % Write displacement and strain
-%                 mask_dense = st.maskimage(:,:,1);
-%                 save([outputs{4},filename],'dxd','dyd','RR_DENSE','CC_DENSE','mask_dense');
+                % Write displacement and strain
+                mask_dense = st.maskimage(:,:,1);
+                save([outputs{4},filename],'dxd','dyd','RR_DENSE','CC_DENSE','mask_dense');
 
             end
         end
@@ -437,6 +527,10 @@ end
 %% ERROR ANALYSIS
 if RUN_ERROR
     for d=ini:fin%1:nod
+
+        % Debug
+        fprintf('\n Estimating error metrics in data %d',d-1)
+      
         for f=1:nos
             for r=1:nor
 
@@ -445,9 +539,6 @@ if RUN_ERROR
                 filename_cspamm = sprintf('CI_%03d_%02d_%02d.mat',d-1,f-1,r-1);
                 filename_dense  = sprintf('DI_%03d_%02d_%02d.mat',d-1,0,r-1);
                 load([outputs{1},filename_exact]) % EXACT
-
-                % Debug
-                fprintf('\n Estimating error metrics in data %d, tag spacing %d',d-1,f-1)
                 
                 %% Errors estimation
                 % Load data
@@ -463,8 +554,8 @@ if RUN_ERROR
 
                 
                 % Reference mask
-                m = (mask_exact.*mask_dense.*mask_harp.*mask_sinmod) > 0;
-                
+                m = and(and(and(mask_exact,mask_dense),mask_harp),mask_sinmod);
+
                 % Error loop
                 N = sum(m(:));           
                 for l=1:Nfr
@@ -552,73 +643,67 @@ if RUN_ERROR
 end
 
    
-%% plots
-option=1;
-if option==1
-    load('outputs/noise_free/workspace.mat')
-else
-    load('outputs.bak/noise_free/workspace.mat')
-end
-
-fr = 8;
-spa = 4;
-res = 1:5;
-
-figure,
-subplot 221
-errorbar(squeeze(mean_HARP_mag(spa,res,fr)),squeeze(std_HARP_mag(spa,res,fr)),'LineWidth',2); hold on
-errorbar(squeeze(mean_DENSE_mag(spa,res,fr)),squeeze(std_DENSE_mag(spa,res,fr)),'LineWidth',2); hold on
-errorbar(squeeze(mean_SinMod_mag(spa,res,fr)),squeeze(std_SinMod_mag(spa,res,fr)),'LineWidth',2); hold off
-legend('HARP','DENSE','SinMod')
-axis([0 6 0 20])
-xlabel('displacement (in wavelengths)', 'interpreter', 'LaTeX');
-ylabel('nRMSE (\%)', 'interpreter', 'LaTeX')
-ax = gca;
-ax.XAxis.TickLabels = [0.1 0.2 0.3 0.4 0.5];
-ax.XAxis.TickValues = [1 2 3 4 5];
-ax.YAxis.TickValues = [0 5 10 15 20 25];
-
-subplot 222
-errorbar(squeeze(mean_HARP_ang(spa,res,fr)),squeeze(std_HARP_ang(spa,res,fr)),'LineWidth',2); hold on
-errorbar(squeeze(mean_DENSE_ang(spa,res,fr)),squeeze(std_DENSE_ang(spa,res,fr)),'LineWidth',2); hold on
-errorbar(squeeze(mean_SinMod_ang(spa,res,fr)),squeeze(std_SinMod_ang(spa,res,fr)),'LineWidth',2); hold off
-legend('HARP','DENSE','SinMod')
-axis([0 6 0 6])
-xlabel('displacement (in wavelengths)', 'interpreter', 'LaTeX');
-ylabel('DE ($^o$)', 'interpreter', 'LaTeX')
-ax = gca;
-ax.XAxis.TickLabels = [0.1 0.2 0.3 0.4 0.5];
-ax.XAxis.TickValues = [1 2 3 4 5];
-ax.YAxis.TickValues = [0 2 4 6 8 10];
-
-subplot 223
-errorbar(squeeze(mean_HARP_CC(spa,res,fr)),squeeze(std_HARP_CC(spa,res,fr)),'LineWidth',2); hold on
-errorbar(squeeze(mean_DENSE_CC(spa,res,fr)),squeeze(std_DENSE_CC(spa,res,fr)),'LineWidth',2); hold on
-errorbar(squeeze(mean_SinMod_CC(spa,res,fr)),squeeze(std_SinMod_CC(spa,res,fr)),'LineWidth',2); hold off
-legend('HARP','DENSE','SinMod')
-axis([0 6 0 20])
-xlabel('displacement (in wavelengths)', 'interpreter', 'LaTeX');
-ylabel('CC nRMSE (\%)', 'interpreter', 'LaTeX')
-ax = gca;
-ax.XAxis.TickLabels = [0.1 0.2 0.3 0.4 0.5];
-ax.XAxis.TickValues = [1 2 3 4 5];
-ax.YAxis.TickValues = [0 5 10 15 20 25];
-
-subplot 224
-errorbar(squeeze(mean_HARP_RR(spa,res,fr)),squeeze(std_HARP_RR(spa,res,fr)),'LineWidth',2); hold on
-errorbar(squeeze(mean_DENSE_RR(spa,res,fr)),squeeze(std_DENSE_RR(spa,res,fr)),'LineWidth',2); hold on
-errorbar(squeeze(mean_SinMod_RR(spa,res,fr)),squeeze(std_SinMod_RR(spa,res,fr)),'LineWidth',2); hold off
-legend('HARP','DENSE','SinMod')
-axis([0 6 0 100])
-xlabel('displacement (in wavelengths)', 'interpreter', 'LaTeX');
-ylabel('RR nRMSE (\%)', 'interpreter', 'LaTeX')
-ax = gca;
-ax.XAxis.TickLabels = [0.1 0.2 0.3 0.4 0.5];
-ax.XAxis.TickValues = [1 2 3 4 5];
-ax.YAxis.TickValues = [0 20 40 60 80 100];
-
-if option==1
-    print('-dpng','-r600','fitted')
-else
-    print('-dpng','-r600','normal')
-end
+% %% plots
+% option=1;
+% if option==1
+%     load('outputs/noise_free/workspace.mat')
+% else
+%     load('outputs.bak/noise_free/workspace.mat')
+% end
+% 
+% fr = 8;
+% spa = 4;
+% res = 1:5;
+% 
+% figure,
+% subplot 221
+% errorbar(squeeze(mean_HARP_mag(spa,res,fr)),squeeze(std_HARP_mag(spa,res,fr)),'LineWidth',2); hold on
+% errorbar(squeeze(mean_DENSE_mag(spa,res,fr)),squeeze(std_DENSE_mag(spa,res,fr)),'LineWidth',2); hold on
+% errorbar(squeeze(mean_SinMod_mag(spa,res,fr)),squeeze(std_SinMod_mag(spa,res,fr)),'LineWidth',2); hold off
+% legend('HARP','DENSE','SinMod')
+% axis([0 6 0 20])
+% xlabel('displacement (in wavelengths)', 'interpreter', 'LaTeX');
+% ylabel('nRMSE (\%)', 'interpreter', 'LaTeX')
+% ax = gca;
+% ax.XAxis.TickLabels = [0.1 0.2 0.3 0.4 0.5];
+% ax.XAxis.TickValues = [1 2 3 4 5];
+% ax.YAxis.TickValues = [0 5 10 15 20 25];
+% 
+% subplot 222
+% errorbar(squeeze(mean_HARP_ang(spa,res,fr)),squeeze(std_HARP_ang(spa,res,fr)),'LineWidth',2); hold on
+% errorbar(squeeze(mean_DENSE_ang(spa,res,fr)),squeeze(std_DENSE_ang(spa,res,fr)),'LineWidth',2); hold on
+% errorbar(squeeze(mean_SinMod_ang(spa,res,fr)),squeeze(std_SinMod_ang(spa,res,fr)),'LineWidth',2); hold off
+% legend('HARP','DENSE','SinMod')
+% axis([0 6 0 6])
+% xlabel('displacement (in wavelengths)', 'interpreter', 'LaTeX');
+% ylabel('DE ($^o$)', 'interpreter', 'LaTeX')
+% ax = gca;
+% ax.XAxis.TickLabels = [0.1 0.2 0.3 0.4 0.5];
+% ax.XAxis.TickValues = [1 2 3 4 5];
+% ax.YAxis.TickValues = [0 2 4 6 8 10];
+% 
+% subplot 223
+% errorbar(squeeze(mean_HARP_CC(spa,res,fr)),squeeze(std_HARP_CC(spa,res,fr)),'LineWidth',2); hold on
+% errorbar(squeeze(mean_DENSE_CC(spa,res,fr)),squeeze(std_DENSE_CC(spa,res,fr)),'LineWidth',2); hold on
+% errorbar(squeeze(mean_SinMod_CC(spa,res,fr)),squeeze(std_SinMod_CC(spa,res,fr)),'LineWidth',2); hold off
+% legend('HARP','DENSE','SinMod')
+% axis([0 6 0 20])
+% xlabel('displacement (in wavelengths)', 'interpreter', 'LaTeX');
+% ylabel('CC nRMSE (\%)', 'interpreter', 'LaTeX')
+% ax = gca;
+% ax.XAxis.TickLabels = [0.1 0.2 0.3 0.4 0.5];
+% ax.XAxis.TickValues = [1 2 3 4 5];
+% ax.YAxis.TickValues = [0 5 10 15 20 25];
+% 
+% subplot 224
+% errorbar(squeeze(mean_HARP_RR(spa,res,fr)),squeeze(std_HARP_RR(spa,res,fr)),'LineWidth',2); hold on
+% errorbar(squeeze(mean_DENSE_RR(spa,res,fr)),squeeze(std_DENSE_RR(spa,res,fr)),'LineWidth',2); hold on
+% errorbar(squeeze(mean_SinMod_RR(spa,res,fr)),squeeze(std_SinMod_RR(spa,res,fr)),'LineWidth',2); hold off
+% legend('HARP','DENSE','SinMod')
+% axis([0 6 0 100])
+% xlabel('displacement (in wavelengths)', 'interpreter', 'LaTeX');
+% ylabel('RR nRMSE (\%)', 'interpreter', 'LaTeX')
+% ax = gca;
+% ax.XAxis.TickLabels = [0.1 0.2 0.3 0.4 0.5];
+% ax.XAxis.TickValues = [1 2 3 4 5];
+% ax.YAxis.TickValues = [0 20 40 60 80 100];

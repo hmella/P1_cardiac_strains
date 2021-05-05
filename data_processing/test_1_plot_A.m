@@ -2,7 +2,7 @@ clear; close all; clc;
 
 % Add functions path
 addpath('utils/')
-addpath(genpath('/home/hernan/Git/matlab_tools/'))
+addpath(genpath('/home/hernan/git/matlab_tools/'))
 
 % Workspace folder
 path2folder = 'outputs/noise_free/';
@@ -63,7 +63,7 @@ co = [0.0000 0.4470 0.7410
       0.4660 0.6740 0.1880
       0.3010 0.7450 0.9330
       0.6350 0.0780 0.1840];
-lt = {'-','-','-'};
+lt = {'-','-','-.'};
 
 %% MAGNITUDE
 
@@ -74,7 +74,7 @@ h2 = zeros([1 2]);
 % Plot error for each tag frequency
 for foo=1:2
 
-    figure('Visible','off')
+    figure('Visible',visibility)
     for f=1:5
 
         % Plot results
@@ -90,11 +90,10 @@ for foo=1:2
         if f == 1
             ref_ax = gca;
             ref_fig = gcf;
-            fig_pos = get(ref_fig,'position');
-            ax_pos = get(ref_ax,'position');
-            set(gcf,'position',[fig_pos(1) fig_pos(2) 0.6*fig_pos(3) fig_pos(4)])
-            dx = 0.1;
-            set(gca,'position',[ax_pos(1) ax_pos(2)+dx ax_pos(3) ax_pos(4)-0.6*dx])
+            fp = get(ref_fig,'position');
+            ap = get(ref_ax,'position');
+            set(gcf,'position',[fp(1) fp(2) 0.7*fp(3) fp(4)])
+            set(gca,'position',[1.5*ap(1) 2*ap(2) 0.85*ap(3) 0.9*ap(4)])
         end
 
         % Print results
@@ -114,7 +113,7 @@ for foo=1:2
         'LineWidth',1,'MarkerFaceColor','k','MarkerSize',plot_marker_size); hold on;
 
     % Dummy plots
-    h2(1) = plot(NaN,NaN,'-k','LineWidth',plot_line_width); hold on;
+    h2(1) = plot(NaN,NaN,lt{foo+1},'Color','k','LineWidth',plot_line_width); hold on;
     h2(2) = plot(NaN,NaN,'sk','LineWidth',1,'MarkerFaceColor','k',...
                 'MarkerSize',plot_marker_size); hold off;
 
@@ -122,7 +121,7 @@ for foo=1:2
     if foo==1
         api.XLabel = false;
         api.YLabel = labels(1);
-        api.Legend = {'HARP','DENSEanalysis'};
+        api.Legend = {'SP-HR','DENSEanalysis'};
     else
         api.XLabel = false;
         api.YLabel = false;        
@@ -139,6 +138,7 @@ for foo=1:2
     print('-depsc','-r600',[path2folder,sprintf('MAG_%01d',foo)])
     
 end
+
 
 
 %% ANGULAR
@@ -166,15 +166,10 @@ for foo=1:2
         if f == 1
             ref_ax = gca;
             ref_fig = gcf;
-            fig_pos = get(ref_fig,'position');
-            ax_pos = get(ref_ax,'position');
-            set(gcf,'position',[fig_pos(1) fig_pos(2) 0.6*fig_pos(3) fig_pos(4)])
-            dx = 0.1;
-            set(gca,'position',[ax_pos(1) ax_pos(2)+dx ax_pos(3) ax_pos(4)-0.6*dx])
-    %     else
-    %         fig_pos = get(ref_fig,'position');
-    %         set(gcf,'position',fig_pos)
-    %         set(gca,'position',get(ref_ax,'position'))
+            fp = get(ref_fig,'position');
+            ap = get(ref_ax,'position');
+            set(gcf,'position',[fp(1) fp(2) 0.7*fp(3) fp(4)])
+            set(gca,'position',[1.5*ap(1) 2*ap(2) 0.85*ap(3) 0.9*ap(4)])
         end
 
     end
@@ -182,7 +177,7 @@ for foo=1:2
         'LineWidth',1,'MarkerFaceColor','k','MarkerSize',plot_marker_size); hold on;
 
     % Dummy plots
-    h2(1) = plot(NaN,NaN,'-k','LineWidth',plot_line_width); hold on;
+    h2(1) = plot(NaN,NaN,lt{foo+1},'Color','k','LineWidth',plot_line_width); hold on;
     h2(2) = plot(NaN,NaN,'sk','LineWidth',1,'MarkerFaceColor','k',...
                 'MarkerSize',plot_marker_size); hold off;
 
@@ -190,7 +185,7 @@ for foo=1:2
     if foo==1
         api.XLabel = false;
         api.YLabel = labels(1);
-        api.Legend = {'HARP','DENSEanalysis'};
+        api.Legend = {'SP-HR','DENSEanalysis'};
     else
         api.XLabel = false;
         api.YLabel = false;        
@@ -234,15 +229,10 @@ for foo=1:2
         if f == 1
             ref_ax = gca;
             ref_fig = gcf;
-            fig_pos = get(ref_fig,'position');
-            ax_pos = get(ref_ax,'position');
-            set(gcf,'position',[fig_pos(1) fig_pos(2) 0.6*fig_pos(3) fig_pos(4)])
-            dx = 0.1;
-            set(gca,'position',[ax_pos(1) ax_pos(2)+dx ax_pos(3) ax_pos(4)-0.6*dx])
-    %     else
-    %         fig_pos = get(ref_fig,'position');
-    %         set(gcf,'position',fig_pos)
-    %         set(gca,'position',get(ref_ax,'position'))
+            fp = get(ref_fig,'position');
+            ap = get(ref_ax,'position');
+            set(gcf,'position',[fp(1) fp(2) 0.7*fp(3) fp(4)])
+            set(gca,'position',[1.5*ap(1) 2*ap(2) 0.85*ap(3) 0.9*ap(4)])
         end
 
     end
@@ -250,7 +240,7 @@ for foo=1:2
         'LineWidth',1,'MarkerFaceColor','k','MarkerSize',plot_marker_size); hold on;
 
     % Dummy plots
-    h2(1) = plot(NaN,NaN,'-k','LineWidth',plot_line_width); hold on;
+    h2(1) = plot(NaN,NaN,lt{foo+1},'Color','k','LineWidth',plot_line_width); hold on;
     h2(2) = plot(NaN,NaN,'sk','LineWidth',1,'MarkerFaceColor','k',...
                 'MarkerSize',plot_marker_size); hold off;
 
@@ -258,7 +248,7 @@ for foo=1:2
     if foo==1
         api.XLabel = true;
         api.YLabel = true;
-        api.Legend = {'HARP','DENSEanalysis'};
+        api.Legend = {'SP-HR','DENSEanalysis'};
     else
         api.XLabel = true;
         api.YLabel = false;        
@@ -302,15 +292,10 @@ for foo=1:2
         if f == 1
             ref_ax = gca;
             ref_fig = gcf;
-            fig_pos = get(ref_fig,'position');
-            ax_pos = get(ref_ax,'position');
-            set(gcf,'position',[fig_pos(1) fig_pos(2) 0.6*fig_pos(3) fig_pos(4)])
-            dx = 0.1;
-            set(gca,'position',[ax_pos(1) ax_pos(2)+dx ax_pos(3) ax_pos(4)-0.6*dx])
-    %     else
-    %         fig_pos = get(ref_fig,'position');
-    %         set(gcf,'position',fig_pos)
-    %         set(gca,'position',get(ref_ax,'position'))
+            fp = get(ref_fig,'position');
+            ap = get(ref_ax,'position');
+            set(gcf,'position',[fp(1) fp(2) 0.7*fp(3) fp(4)])
+            set(gca,'position',[1.5*ap(1) 2*ap(2) 0.85*ap(3) 0.9*ap(4)])
         end
 
     end
@@ -318,7 +303,7 @@ for foo=1:2
         'LineWidth',1,'MarkerFaceColor','k','MarkerSize',plot_marker_size); hold on;
 
     % Dummy plots
-    h2(1) = plot(NaN,NaN,'-k','LineWidth',plot_line_width); hold on;
+    h2(1) = plot(NaN,NaN,lt{foo+1},'Color','k','LineWidth',plot_line_width); hold on;
     h2(2) = plot(NaN,NaN,'sk','LineWidth',1,'MarkerFaceColor','k',...
                 'MarkerSize',plot_marker_size); hold off;
 
@@ -326,7 +311,7 @@ for foo=1:2
     if foo==1
         api.XLabel = true;
         api.YLabel = true;
-        api.Legend = {'HARP','DENSEanalysis'};
+        api.Legend = {'SP-HR','DENSEanalysis'};
     else
         api.XLabel = true;
         api.YLabel = false;        

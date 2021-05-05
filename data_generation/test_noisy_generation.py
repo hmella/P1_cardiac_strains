@@ -9,7 +9,7 @@ from scipy.io import savemat
 
 from utils.args_parser import *
 from utils.im_parameters import (harp_spacings, noise_levels, patients_arr,
-                                 resolutions, sinmod_spacings)
+                                 resolutions, sinmod_spacings, tag_spacings)
 
 
 # Input folders
@@ -31,6 +31,8 @@ for folder in folders:
 
         for r in range(nb_res):
 
+            print('[H] Pixel-spacing {:f}, tag-spacing {:f}'.format(0.1/resolutions[r][0],tag_spacings[harp_spacings[r]]))
+            print('[S] Pixel-spacing {:f}, tag-spacing {:f}'.format(0.1/resolutions[r][0],tag_spacings[sinmod_spacings[r]]))
             # Filenames
             H_filename = 'CI_{:03d}_{:02d}_{:02d}.pkl'.format(d,harp_spacings[r],r)
             S_filename = 'CI_{:03d}_{:02d}_{:02d}.pkl'.format(d,sinmod_spacings[r],r)

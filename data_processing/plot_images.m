@@ -166,7 +166,7 @@ if RUN_HARP
             % SPAMM encoding frequency
             ke = [ke_spamm(f) ke_spamm(f)];        
 
-            for r=2
+            for r=4
 
                 % Load data
                 filename = sprintf('HI_%03d_%02d_%02d.mat',d-1,f-1,r-1);
@@ -199,7 +199,7 @@ end
 if RUN_DENSE
     for d=1
         for f=2
-            for r=2
+            for r=3
 
                 % Load data
                 filename = sprintf('DI_%03d_%02d_%02d.mat',d-1,f-1,r-1);

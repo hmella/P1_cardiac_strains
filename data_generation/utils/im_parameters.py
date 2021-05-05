@@ -16,7 +16,7 @@ dfrequencies = [0.12*1000*2*np.pi*np.array([1,1,0])]                      # enco
 noise_levels = np.array([1e-30, 3.535e-02, 4.350e-02, 5.500e-02, 7.725e-02])
 
 # Spacings for the noise analysis
-harp_spacings = [2, 1, 1, 1, 1]
+harp_spacings = [3, 3, 1, 1, 1]
 sinmod_spacings = [1, 1, 1, 1, 1]
 
 # Patients array
